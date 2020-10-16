@@ -1,494 +1,495 @@
 .386p
 
-segdesc	struc
-	limit	dw 0
-	base_l	dw 0
-	base_m	db 0
-	attr_1	db 0
-	arrt_2	db 0
-	base_h	db 0
-segdesc	ends
-
-intdesc	struc
-	offs_l	dw 0
-	sel	dw 0
-	rsrv	db 0
-	attr	db 0
-	offs_h	dw 0
-intdesc	ends
-
-pseg	segment	'code' use32
-	assume	cs:pseg
-
-gdt	label	byte
-	gdt_null   segdesc<>
-	gdt_4gb    segdesc<0ffffh,,,92h,0cfh>
-	gdt_code16 segdesc<rseg_size-1,,,98h>
-	gdt_code32 segdesc<pseg_size-1,,,98h,0cfh>
-	gdt_data   segdesc<pseg_size-1,,,92h,0cfh>
-	gdt_stack  segdesc<sseg_size-1,,,92h,0cfh>
-gdt_size = $-gdt
-
-	gdtr	dw gdt_size-1	 
-		dd ?		 
-
-	sel_4gb    equ 8
-	sel_code16 equ 16
-	sel_code32 equ 24
-	sel_data   equ 32
-	sel_stack  equ 40
-					 
-idt	label	byte			 
-	trap1	intdesc	13 dup (<,sel_code32,,8fh>)	 
-	trap13	intdesc	<0, sel_code32,,8fh>		 
-	trap2	intdesc	18 dup (<,sel_code32,,8fh>)	 
-	int08	intdesc	<,sel_code32,,8eh>		 
-	int09	intdesc	<,sel_code32,,8eh>		 
-idt_size = $-idt
-
-	idtr	dw idt_size-1	 
-		dd ?		 
-
-	idtr_r	dw 3ffh,0,0	 
-
-	msgp	db 'Protected mode'
-msgp_size = $-msgp
-	msgr	db 'Real mode', '$'
-msgr_size = $-msgr-1
-	msgt	db 'Timer:'
-msgt_size = $-msgt
-	msgm	db 'AvaliableMemory:'
-msgm_size = $-msgm
-
-	scan2ascii db 0,1bh,'1','2','3','4','5','6','7','8','9','0','-','=',8
-		   db ' ','q','w','e','r','t','y','u','i','o','p','[',']','$'
-		   db ' ','a','s','d','f','g','h','j','k','l',
-		   db '\','z','x','c','v','b','n','m',',','.','/',0,0,0,' ',0,0
-		   db 0,0,0,0,0,0,0,0,0,0,0,0
-
-	screen	dd 4*160	 
-	timer	dd 0		 
-
-	master	db 0		 
-	slave	db 0		 
-
-p_entry:
-	 
-	mov	ax,sel_4gb
-	mov	ds,ax
-	mov	es,ax
-	mov	ax,sel_stack
-	mov	ebx,sseg_size
-	mov	ss,ax
-	mov	esp,ebx
-
-	in	al,70h
-	and	al,7fh
-	out	70h,al
-
-	sti
-
-push	ebp
-	xor	eax,eax
-	mov	ebp,1*160
-	add	ebp,0b8000h
-	mov	ecx,msgp_size
-	xor	esi,esi
-
-screen1:
-	mov	al,byte ptr msgp[esi]
-	mov	es:[ebp],al
-	add	ebp,2
-	inc	esi
-	loop	screen1
-
-	pop	ebp
-
-	push	ebp
-	xor	eax,eax
-	mov	ebp, 3*160
-	add	ebp, 0b8000h
-	mov	ecx,msgm_size
-	xor	esi,esi
-
-screen2:
-	mov	al,byte ptr msgm[esi]
-	mov	es:[ebp],al
-	add	ebp,2
-	inc	esi
-	loop	screen2
-
-	pop	ebp
+seg_descr struc    
+    lim 	dw 0	
+    base_l 	dw 0	
+    base_m 	db 0	
+    attr_1	db 0	
+    attr_2	db 0	
+    base_h 	db 0	
+seg_descr ends
 
 
-	push	ebp
-	xor	eax,eax
-	mov	ebp,40*2
-	add	ebp,0b8000h
-	mov	ecx,msgt_size
-	xor	esi,esi
+int_descr struc 
+    offs_l 	dw 0  
+    sel		dw 0  
+    cntr    db 0  
+    attr	db 0  
+    offs_h 	dw 0  
+int_descr ends
 
-screen3:
-	mov	al,byte ptr msgt[esi]
-	mov	es:[ebp],al
-	add	ebp,2
-	inc	esi
-	loop	screen3
 
-	pop	ebp
+stack_seg segment  para stack 'STACK'
+    stack_start	db	100h dup(?)
+    stack_size = $-stack_start
+stack_seg 	ENDS
 
-	call	compute_memory
-	 
-	jmp	short $
 
-dummy_exc proc
-	iretd
-dummy_exc endp
+data_seg segment para 'DATA'
+    
+    gdt_null  seg_descr <>
+    
+    gdt_CS_16bit seg_descr <rm_code_size-1, 0, 0, 10011000b, 00000000b, 0>
+    
+    gdt_DS_16bit seg_descr <0FFFFh, 0, 0, 10010010b, 10001111b, 0>  
+    
+    gdt_CS_32bit seg_descr <pm_code_size-1, 0, 0, 10011000b, 01000000b, 0>    
+    
+    gdt_DS_32bit seg_descr <data_size-1, 0, 0, 10010010b, 01000000b, 0>  
+    
+    gdt_SS_32bit seg_descr <stack_size-1, 0, 0, 10010110b, 01000000b, 0>
+    
+    gdt_VB_32bit seg_descr <3999, 8000h, 0Bh, 10010010b, 01000000b, 0>
 
-exc13	proc
-	pop	eax
-	iretd
-exc13	endp
-
-int08_handler:
-	push	eax
-	push	ecx
-	push	edx
-
-	push	ebp
-	mov	eax,timer
-	mov	ebp,+55*2
-	mov	ecx,8
-	add	ebp,0b8000h
-cycle:
-	mov	dl,al
-	and	dl,0fh
-	cmp	dl,10
-	jl	number
-	add	dl,'a'-10
-	jmp	print
-number:
-	add	dl,'0'
-print:
-	mov	es:[ebp],dl
-	ror	eax,4
-	sub	ebp,2
-	loop	cycle
-
-	pop	ebp
-
-	inc	eax
-	mov	timer,eax
-
- 
-	mov	al,20h
-	out	20h,al
-
-	pop	edx
-	pop	ecx
-	pop	eax
-	iretd
-
-int09_handler:
-	push	eax
-	push	ebx
-	push	es
-	push	ds
-
-	in	al,60h			 
-	cmp	al,01h			 
-	je	esc_pressed		 
-	cmp	al,39h			 
-	ja	skip_translate		 
-	mov	bx,sel_data		 
-	mov	ds,bx			 
-	mov	ebx,offset scan2ascii	 
-	xlatb				 
-	mov	bx,sel_4gb
-	mov	es,bx			 
-	mov	ebx,screen		 
-	cmp	al,8			 
-	je	bs_pressed
-	mov	es:[ebx+0b8000h],al	 
-	add	dword ptr screen,2	 
-	jmp	short skip_translate
-bs_pressed:				 
-	mov	al,' '			 
-	sub	ebx,2			 
-	mov	es:[ebx+0b8000h],al	 
-	mov	screen,ebx		 
-skip_translate:
- 
-	in	al,61h
-	or	al,80h
-	out	61h,al
- 
-	mov	al,20h
-	out	20h,al
-
-	pop	ds
-	pop	es
-	pop	ebx
-	pop	eax
-	iretd
-
-esc_pressed:
- 
-	in	al,61h
-	or	al,80h
-	out	61h,al
-	mov	al,20h
-	out	20h,al
-	pop	ds
-	pop	es
-	pop	ebx
-	pop	eax
-
-	cli
-
-	in	al,70h
-	or	al,80h
-	out	70h,al
-	 
-	db	0eah
-	dd	r_return
-	dw	sel_code16
-
-compute_memory proc
-	push	ds
-	mov	ax,sel_4gb	 
-	mov	ds,ax
-	mov	ebx,100001h	 
-				 
-	mov	dl,11101011b	 
-	mov	ecx,0FFEFFFFFh	 
-				 
-check:
-	mov	dh,ds:[ebx]	 
-	mov	ds:[ebx],dl	 
-	cmp	ds:[ebx],dl	 
-	jnz	end_of_memory	 
-	mov	ds:[ebx],dh	 
-	inc	ebx		 
-	loop	check
-
-end_of_memory:
-	pop	ds
-	xor	edx,edx
-	mov	eax,ebx
-	mov	ebx,100000h	 
-	div	ebx
-
-	push	ecx
-	push	edx
-
-	push	ebp
-	mov	ebp,3*160+25*2
-	mov	ecx,8
-	add	ebp,0b8000h
-cycle1:
-	mov	dl,al
-	and	dl,0fh
-	cmp	dl,10
-	jl	number1
-	add	dl,'a'-10
-	jmp	print1
-number1:
-	add	dl,'0'
-print1:
-	mov	es:[ebp],dl
-	ror	eax,4
-	sub	ebp,2
-	loop	cycle1
-
-	pop	ebp
-
-	pop	edx
-	pop	ecx
-
-	ret
-compute_memory endp
-
-	pseg_size = $-gdt
-pseg	ends
-
-rseg	segment para public 'CODE' use16
-	assume cs:rseg, ds:pseg, ss:sseg
-r_start:
-	mov	ax,3
-	int	10h
-
-	push	pseg
-	pop	ds
-
-	mov ah, 09h
-	mov edx, offset msgr
-	int 21h
- 
-	xor	eax,eax
-	mov	ax,rseg
-	shl	eax,4
-	mov	word ptr gdt_code16+2,ax	 
-	shr	eax,16
-	mov	byte ptr gdt_code16+4,al	 
-	mov	ax,pseg
-	shl	eax,4
-	push	eax				 
-	push	eax				 
-	mov	word ptr gdt_code32+2,ax	 
-	mov	word ptr gdt_stack+2,ax		 
-	mov	word ptr gdt_data+2,ax		 
-	shr	eax,16
-	mov	byte ptr gdt_code32+4,al	 
-	mov	byte ptr gdt_stack+4,al		 
-	mov	byte ptr gdt_data+4,al
- 
-	pop	eax
-	add	eax,offset gdt			 
-	mov	dword ptr gdtr+2,eax		 
-	mov	word ptr gdtr,gdt_size-1	 					 
- 
-	lgdt	fword ptr gdtr
- 
-	pop	eax
-	add	eax,offset idt
-	mov	dword ptr idtr+2,eax
-	mov	word ptr idtr,idt_size-1
- 
-	mov	eax,offset dummy_exc
-	mov	trap1.offs_l,ax
-	shr	eax,16
-	mov	trap1.offs_h,ax
-
-	mov	eax,offset exc13
-	mov	trap13.offs_l,ax
-	shr	eax,16
-	mov	trap13.offs_h,ax
+    gdt_size = $-gdt_null 
+    gdtr	df 0	      
+    	
+    sel_CS_16bit    equ    8   
+    sel_DS_16bit    equ   16   
+    sel_CS_32bit    equ   24
+    sel_DS_32bit    equ   32
+    sel_SS_32bit    equ   40
+    sel_videobuffer equ   48
+    
+    IDT	label byte    
 	
-	mov	eax,offset dummy_exc
-	mov	trap2.offs_l,ax
-	shr	eax,16
-	mov	trap2.offs_h,ax
+	trap_f int_descr 12 dup (<0, sel_CS_32bit, 0, 10001111b, 0>) 
+	trap_13 int_descr <0, sel_CS_32bit, 0, 10001111b, 0>  
+	trap_s int_descr 19 dup (<0, sel_CS_32bit, 0, 10001111b, 0>) 
+    
+    int08 int_descr <0, sel_CS_32bit, 0, 10001110b, 0> 
+    
+    int09 int_descr	<0, sel_CS_32bit, 0, 10001110b, 0> 
 
-	mov	eax,offset int08_handler
-	mov	int08.offs_l,ax
-	shr	eax,16
-	mov	int08.offs_h,ax
+    idt_size = $-IDT 
 
-	mov	eax,offset int09_handler
-	mov	int09.offs_l,ax
-	shr	eax,16
-	mov	int09.offs_h,ax
- 
-	in	al,21h		 
-	mov	master,al	
-	in	al,0a1h		 
-	mov	slave,al
- 
-	mov	al,11h
-	out	20h,al
-	mov	al,20h	 
-	out	21h,al	 
-	mov	al,4
-	out	21h,al
-	mov	al,1
-	out	21h,al
- 
-	mov	al,0FCh	 
-	out	dx,al
- 
-	mov	dx,0A1h
-	mov	al,0FFh
-	out	dx,al
- 
-	lidt	fword ptr idtr
+    idtr df 0                       
+	
+    idtr_backup dw	3FFh, 0, 0      
 
-	mov	al,0d1h
-	out	64h,al
-	mov	al,0dfh
-	out	60h,al
-	cli
+    mask_master	db 0		
+    mask_slave	db 0		
+	
+	ascii	db 0, 0, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 61, 0, 0
+			db 81, 87, 69, 82, 84, 89, 85, 73, 79, 80, 91, 93, 0, 0, 65, 83
+			db 68, 70, 71, 72, 74, 75, 76, 59, 39, 96, 0, 92, 90, 88, 67
+			db 86, 66, 78, 77, 44, 46, 47
 
-	in	al,70h
-	or	al,80h
-	out	70h,al
- 
-	mov	eax,cr0
-	or	al,1
-	mov	cr0,eax
- 
-	db	66h
-	db	0eah
-	dd	offset p_entry
-	dw	sel_code32
+    flag_enter_pr	    db 0				 
+    cnt_time	        dd 0		    
+    syml_pos     dd 2 * (80 * 10)   
+    
+    msg_in_rm   db 27, '[32;40mIn real mode. ', 27, '[0m$'
+    msg_move_pm db 27, '[32;40mPress any key...', 27, '[0m$'
+    msg_out_pm  db 27, '[32;40mBack in real mode. ', 27, '[0m$'
 
-r_return:
- 
-	mov	al,0d1h
-	out	64h,al
-	mov	al,0ddh
-	out	60h,al
 
-	mov	eax,cr0
-	and	al,0feh	 
-	mov	cr0,eax
+    data_size = $-gdt_null 
+data_seg ends
 
- 
-	db	0eah
-	dw	$+4
-	dw	rseg
- 
-	mov	ax,pseg	 
-	mov	ds,ax
-	mov	es,ax
-	mov	ax,sseg
-	mov	bx,sseg_size
-	mov	ss,ax
-	mov	sp,bx
- 
-	mov	al,11h
-	out	20h,al
-	mov	al,8
-	out	21h,al
-	mov	al,4
-	out	21h,al
-	mov	al,1
-	out	21h,al
- 
-	mov	al,master
-	out	21h,al
-	mov	al,slave
-	out	0a1h,al
- 
-	lidt	fword ptr idtr_r
+PM_code_seg segment para public 'CODE' use32
 
-	in	al,70h
-	and	al,7fh
-	out	70h,al
+    assume cs:PM_code_seg, ds:data_seg, ss:stack_seg
 
-	sti
+    pm_start:
+            mov	ax, sel_DS_32bit 
+            mov	ds, ax
+            mov	ax, sel_videobuffer
+            mov	es, ax
+            mov	ax, sel_SS_32bit
+            mov	ss, ax
+            mov	eax, stack_size
+            mov	esp, eax
 
-	mov	ah,2
-	xor	bx,bx
-	mov	dx,200h
-	int	10h
+        sti 
+        
+        mov dI, 0
+    	mov ah, 2h
+    	mov al, 'M'
+    	stosw
+    	mov al, 'e'
+    	stosw
+    	mov al, 'm'
+    	stosw
+    	mov al, 'o'
+    	stosw
+    	mov al, 'r'
+    	stosw
+    	mov al, 'y'
+    	stosw
+    	mov al, ':'
+    	stosw
+        
+        call count_memory
+        
+    proccess:
+        test flag_enter_pr, 1
+        jz	proccess
+      
+        cli
+		db	0EAh 
+    	dd	offset return_rm
+    	dw	sel_CS_16bit
+		
+		except_1 proc
+			iret
+		except_1 endp
+	
+		except_13 proc
+			pop eax
+			iret
+		except_13 endp   
+		
+        new_int08 proc uses eax 
+                
+                mov  eax, cnt_time
+				push eax
+                
+					mov edi, 80 * 2
+					xor eax, eax
+					test cnt_time, 05
+					jz X
+					test cnt_time, 09
+					jnz skip
+					
+					mov al, ' '
+					jmp pr
+				X:
+					mov al, 'X'
+				pr:
+					mov ah, 7
+					stosw		
+						
+				skip:	
+					pop eax
+                
+					inc eax
 
-	mov ah,9
-	mov edx,offset msgr
-	int 21h
-	mov	ah,8
-	int	21h
-	mov	ax,3
-	int	10h
+                
+                mov cnt_time, eax
+                
+                mov	al, 20h 
+                out	20h, al
+                
+                iretd
+        new_int08 endp
 
-	mov	ah,4ch
-	int	21h
-rseg_size = $-r_start
-rseg	ends
+        new_int09 proc uses eax ebx edx 
+            in	al, 60h      
 
-sseg	segment para stack 'stack'
-	stack_start	db 100h dup(?)
-sseg_size = $-stack_start
-sseg	ends
+            cmp	al, 1Ch 	        
+            jne	print_value         
+            or flag_enter_pr, 1     
+            jmp allow_handle_keyboard
+            
+            print_value:
+                cmp al, 80h  
+                ja allow_handle_keyboard 	 
+                                
+                xor ah, ah	 
+                
+                xor ebx, ebx
+                mov bx, ax
 
-end r_start
+                mov dl, ascii[ebx]   
+                mov ebx, syml_pos   
+                mov es:[ebx], dl
+
+                add ebx, 2          
+                mov syml_pos, ebx
+
+            allow_handle_keyboard: 
+                in	al, 61h 
+                or	al, 80h 
+                out	61h, al 
+                and al, 7Fh 
+                out	61h, al
+
+                mov	al, 20h 
+                out	20h, al
+
+                iretd
+        new_int09 endp
+
+        count_memory proc uses ds eax ebx 
+            mov ax, sel_DS_16bit
+            mov ds, ax
+            
+            mov ebx, 100001h 
+            mov dl, 10101110b  
+            
+            mov	ecx, 0FFEFFFFEh
+
+            iterate_through_memory:
+                mov dh, ds:[ebx] 
+
+                mov ds:[ebx], dl        
+                cmp ds:[ebx], dl        
+                                                
+                jnz print_memory_counter        
+            
+                mov	ds:[ebx], dh 
+                inc ebx          
+            loop iterate_through_memory
+
+            print_memory_counter:
+                mov eax, ebx 
+                xor edx, edx
+
+                mov ebx, 100000h 
+                div ebx
+
+                mov ebx, 2 * 10
+                call print_eax
+
+                mov ebx, 2 * 20
+                mov al, 'M'
+                mov es:[ebx], al
+
+                mov ebx, 2 * 20 + 2
+                mov al, 'b'
+                mov es:[ebx], al
+            ret
+        count_memory endp
+        
+        print_eax proc uses ecx ebx edx     
+                add ebx, 10h 
+                mov ecx, 8   
+            
+            print_symbol: 
+                mov dl, al
+                and dl, 0Fh      
+                
+                cmp dl, 10
+                jl add_zero_sym
+                add dl, 'A' - '0' - 10 
+
+            add_zero_sym:
+                add dl, '0' 
+                mov es:[ebx], dl 
+                ror eax, 4       
+                sub ebx, 2       
+                loop print_symbol
+            ret
+        print_eax endp
+
+    pm_code_size = $-pm_start 	
+PM_code_seg ends
+
+RM_code_seg segment para public 'CODE' use16
+    assume cs:RM_code_seg, ds:data_seg, ss: stack_seg
+
+    start:
+        mov ax, data_seg
+        mov ds, ax
+
+        mov ax, PM_code_seg
+        mov es, ax
+
+		mov ah, 09h
+    	lea dx, msg_in_rm
+    	int 21h
+		xor dx, dx
+    	mov ah, 2
+    	mov dl, 13
+    	int 21h
+    	mov dl, 10
+    	int 21h
+		
+		mov ah, 09h
+    	lea dx, msg_move_pm
+    	int 21h
+		xor dx, dx
+    	mov ah, 2
+    	mov dl, 13
+    	int 21h
+    	mov dl, 10
+    	int 21h
+
+        push eax
+    	mov ah, 10h
+    	int 16h
+    	pop eax
+        mov	ax, 3
+    	int	10h 
+
+        xor	eax, eax
+		
+        mov	ax, RM_code_seg
+		shl eax, 4         
+    	mov word ptr gdt_CS_16bit.base_l, ax
+    	shr eax, 16                       
+    	mov byte ptr gdt_CS_16bit.base_m, al
+    	mov byte ptr gdt_CS_16bit.base_h, ah
+
+        mov ax, PM_code_seg
+		shl eax, 4         
+    	mov word ptr gdt_CS_32bit.base_l, ax
+    	shr eax, 16                       
+    	mov byte ptr gdt_CS_32bit.base_m, al
+    	mov byte ptr gdt_CS_32bit.base_h, ah
+
+        mov ax, data_seg
+		shl eax, 4         
+    	mov word ptr gdt_DS_32bit.base_l, ax
+    	shr eax, 16                       
+    	mov byte ptr gdt_DS_32bit.base_m, al
+    	mov byte ptr gdt_DS_32bit.base_h, ah
+
+        mov ax, stack_seg
+		shl eax, 4         
+    	mov word ptr gdt_SS_32bit.base_l, ax
+    	shr eax, 16                       
+    	mov byte ptr gdt_SS_32bit.base_m, al
+    	mov byte ptr gdt_SS_32bit.base_h, ah
+
+        mov ax, data_seg  
+        shl eax, 4   
+        add	eax, offset gdt_null 
+        mov	dword ptr gdtr + 2, eax
+    	mov word ptr  gdtr, gdt_size-1
+    	lgdt fword ptr gdtr
+		
+		lea eax, es:except_1
+		mov	trap_f.offs_l, ax
+    	shr	eax, 16
+		mov	trap_f.offs_h, ax
+			
+		lea eax, es:except_1
+		mov	trap_s.offs_l, ax
+    	shr	eax, 16
+		mov	trap_s.offs_h, ax
+			
+		lea eax, es:except_13
+		mov	trap_13.offs_l, ax
+    	shr	eax, 16
+		mov	trap_13.offs_h, ax
+			
+        lea eax, es:new_int08    
+		mov	int08.offs_l, ax
+    	shr	eax, 16
+		mov	int08.offs_h, ax
+
+        lea eax, es:new_int09
+		mov	int09.offs_l, ax
+    	shr	eax, 16
+		mov	int09.offs_h, ax
+            
+        mov ax, data_seg
+        shl eax, 4
+        add	eax, offset IDT
+        mov	 dword ptr idtr + 2, eax
+    	mov  word ptr  idtr, idt_size-1
+			
+        in	al, 21h						
+        mov	mask_master, al			    
+        in	al, 0A1h					
+        mov	mask_slave, al
+			
+		mov	al, 11h
+		out	20h, al
+		mov	al, 32			
+		out	21h, al						
+	
+		mov	al, 4						
+		out	21h, al                     
+
+		mov	al, 1
+		out	21h, al 
+            
+        mov	al, 0FCh
+        out	21h, al
+            
+        mov	al, 0FFh
+        out	0A1h, al
+			
+        lidt fword ptr idtr                                    
+			
+        in	al, 92h						
+        or	al, 2						
+        out	92h, al						
+
+        cli         
+        in	al, 70h 
+        or	al, 80h
+        out	70h, al
+			
+        mov	eax, cr0
+        or eax, 1     
+        mov	cr0, eax
+
+        db	66h
+		db	0EAh 
+    	dd	offset pm_start
+    	dw	sel_CS_32bit
+
+    return_rm:
+            mov	eax, cr0
+            and	al, 0FEh 				
+            mov	cr0, eax
+            
+            db	0EAh	
+            dw	$+4	    
+            dw	RM_code_seg
+
+            mov	eax, data_seg	
+            mov	ds, ax          
+            mov eax, PM_code_seg
+            mov	es, ax
+            mov	ax, stack_seg   
+            mov	ss, ax
+            mov	ax, stack_size
+            mov	sp, ax
+			
+			mov ax, data_seg
+        	shl eax, 4
+        	add	eax, offset IDT
+        	mov	 dword ptr idtr + 2, eax
+    		mov  word ptr  idtr, idt_size-1
+			
+        	in	al, 21h						
+        	mov	mask_master, al			    
+        	in	al, 0A1h					
+        	mov	mask_slave, al
+			
+			mov	al, 11h
+			out	20h, al
+			mov	al, 8			
+			out	21h, al						
+	
+			mov	al, 4						
+			out	21h, al                     
+
+			mov	al, 1
+			out	21h, al
+
+            mov	al, mask_master 
+            out	21h, al
+            mov	al, mask_slave
+            out	0A1h, al
+            
+            lidt	fword ptr idtr_backup
+
+            in	al, 70h 
+            and	al, 7FH
+            out	70h, al
+            sti     
+
+        mov	ax, 3
+    	int	10h
+		mov ah, 09h
+    	lea dx, msg_out_pm
+    	int 21h
+		xor dx, dx
+    	mov ah, 2
+    	mov dl, 13
+    	int 21h
+    	mov dl, 10
+    	int 21h
+        
+        mov	ax, 4C00h
+        int	21h
+
+    rm_code_size = $-start 	
+RM_code_seg	ends
+end start
