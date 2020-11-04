@@ -60,10 +60,10 @@ data32 segment para 'data'
     mask_master db 0        
     mask_slave  db 0        
     
-    asciimap   db 0, 0, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, 45, 61, 0, 0
-    db 81, 87, 69, 82, 84, 89, 85, 73, 79, 80, 91, 93, 0, 0, 65, 83
-    db 68, 70, 71, 72, 74, 75, 76, 59, 39, 96, 0, 92, 90, 88, 67
-    db 86, 66, 78, 77, 44, 46, 47
+    asciimap   db 0, 0, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48, '-', '=', 0, 0
+    db 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0, 0 
+    db 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 59, 39, 96, 0, 92
+    db 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'
 
     flag_enter_pr db 0
     cnt_time      dd 0            
@@ -72,7 +72,7 @@ data32 segment para 'data'
     
     rm_msg      db 27, '[22;40mIn real mode. ', 27, '[0m$'
     pm_msg_wait db 27, '[22;40mPress any key...', 27, '[0m$'
-    pm_msg_out  db 27, '[22;40mBack to real mode. ', 27, '[0m$'
+    pm_msg_out  db 27, '[22;40mBack in real mode. ', 27, '[0m$'
 
     data_size = $-gdt_null 
 data32 ends
@@ -93,8 +93,48 @@ pm_start:
 
     sti 
     
-    
+
     mov di, 0
+    mov ah, 3h
+
+    mov al, 'I'
+    stosw
+    mov al, 'n'
+    stosw
+    mov al, ' '
+    stosw
+
+    mov al, 'P'
+    stosw
+    mov al, 'r'
+    stosw
+    mov al, 'o'
+    stosw
+    mov al, 't'
+    stosw
+    mov al, 'e'
+    stosw
+    mov al, 'c'
+    stosw
+    mov al, 't'
+    stosw
+    mov al, 'e'
+    stosw
+    mov al, 'd'
+    stosw
+    mov al, ' '
+    stosw
+
+    mov al, 'm'
+    stosw
+    mov al, 'o'
+    stosw
+    mov al, 'd'
+    stosw
+    mov al, 'e'
+    stosw
+    
+    mov di, 80 * 2 + 2
     mov ah, 2h
 
     mov al, 'M'
@@ -137,7 +177,6 @@ pm_start:
 
 
     new_int08 proc uses eax
-        mov edi, 80 * 2
         test cnt_time, 05
         je sym
         test cnt_time, 09
@@ -146,9 +185,14 @@ pm_start:
         mov al, ' '
         jmp pr
     sym:
-        mov al, '='
+        mov edi, 80 * 2
+        mov al, 254
+        
     pr:
-        mov ah, 7
+        mov edi, 80 * 2
+        mov ah, 20h
+        stosw
+        mov edi, 80 * 2 + 19 * 2
         stosw
 
     skip:
@@ -164,7 +208,7 @@ pm_start:
 
     new_int09 proc uses eax ebx edx
         in  al, 60h
-        cmp al, 1Ch
+        cmp al, 1
 
         jne print_value         
         or flag_enter_pr, 1
@@ -228,14 +272,14 @@ pm_start:
         mov ebx, 100000h
         div ebx
 
-        mov ebx, 2 * 7
+        mov ebx, 80 * 2 + 2 * 7
         call print_eax
 
-        mov ebx, 2 * 17
+        mov ebx, 80 * 2 + 2 * 17
         mov al, 'M'
         mov es:[ebx], al
 
-        mov ebx, 2 * 17 + 2
+        mov ebx, 80 * 2 + 2 * 17 + 2
         mov al, 'b'
         mov es:[ebx], al
         ret
