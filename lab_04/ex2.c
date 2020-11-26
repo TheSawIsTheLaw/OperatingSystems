@@ -18,13 +18,13 @@
         if ((childpid = fork()) == -1)
         {
             perror("Can't fork");
-            exit(CANT_FORK_ERROR);
+            return CANT_FORK_ERROR;
         }
         else if (childpid == 0)
         { 
             sleep(1);
             printf("From child. Child identifiers: childProcID is %d, groupID is %d, parentID is %d\n", getpid(), getpgrp(), getppid());
-            exit(SUCCESS);
+            return SUCCESS;
         }
         else
             children[i] = childpid;
@@ -32,14 +32,12 @@
     }
 
     int childStatus;
-    int stat_val;
     for (int i = 0; i < 2; i++)
     {
         childpid = wait(&childStatus);
-        printf("Child has finished: PID = %d; with status: %d\n", childpid, childStatus);
-        
-        if (WIFEXITED(stat_val))
-            printf("Child exited with code %d\n", WEXITSTATUS(stat_val));
+        printf("Child has finished: PID = %d with status: %d\n", childpid, childStatus);
+        if (WIFEXITED(childStatus))
+            printf("Child exited with code %d\n", WEXITSTATUS(childStatus));
         else
             printf("Child terminated abnormally\n");
     }
