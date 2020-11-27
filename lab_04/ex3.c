@@ -13,8 +13,7 @@
     printf("From Parent. Parent identifiers: parentProcID is %d, groupID is %d\n", getpid(), getpgrp());
     pid_t childpid;
     int children[2];
-    char *commands[2] = {"gcc", "ls"};
-    char *arguments[2] = {"--version", "-a"};
+    char *commands[2] = {"pwd", "ls"};
      
     for (int i = 0; i < 2; i++)
     {
@@ -27,7 +26,7 @@
         { 
             printf("From child. Child identifiers: childProcID is %d, groupID is %d, parentID is %d\n", getpid(), getpgrp(), getppid());
             
-            if (execlp(commands[i], commands[i], arguments[i], NULL) < 0)
+            if (execlp(commands[i], commands[i], NULL) < 0)
                 {
                     perror("Can't execlp");
                     exit(CANT_EXECLP_ERROR);
