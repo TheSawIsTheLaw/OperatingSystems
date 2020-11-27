@@ -49,12 +49,13 @@
     for (int i = 0; i < 2; i++)
     {
         childpid = wait(&childStatus);
-        printf("Child has finished: PID = %d; with status: %d\n", childpid, childStatus);
-        
+        printf("Child has finished: PID = %d with status: %d\n", childpid, childStatus);
         if (WIFEXITED(childStatus))
             printf("Child exited with code %d\n", WEXITSTATUS(childStatus));
-        else
-            printf("Child terminated abnormally\n");
+        else if (WIFSIGNALED(childStatus))
+            printf("Child process was terminated due to the receipt of a signal that was not caught. Code: %d\n", WTERMSIG(childStatus));
+        else if (WIFSTOPPED(childStatus))
+            printf("Child process is currently stopped. Code: %d\n", WSTOPSIG(childStatus));
     }
 
     char gotMessages[32] = { 0 };
