@@ -13,7 +13,7 @@
     printf("From Parent. Parent identifiers: parentProcID is %d, groupID is %d\n", getpid(), getpgrp());
     pid_t childpid;
     int children[2];
-    char *commands[2] = {"pwd", "ls"};
+    char *commands[2] = {"ps", "ls"};
      
     for (int i = 0; i < 2; i++)
     {
