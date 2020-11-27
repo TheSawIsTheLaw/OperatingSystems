@@ -48,10 +48,10 @@
         printf("Child has finished: PID = %d with status: %d\n", childpid, childStatus);
         if (WIFEXITED(childStatus))
             printf("Child exited with code %d\n", WEXITSTATUS(childStatus));
-        else if (WIFSIGNALED(childStatus))
-            printf("Child process was terminated due to the receipt of a signal that was not caught. Code: %d\n", WTERMSIG(childStatus));
         else if (WIFSTOPPED(childStatus))
             printf("Child process is currently stopped. Code: %d\n", WSTOPSIG(childStatus));
+        else if (WIFSIGNALED(childStatus))
+            printf("Child process was terminated due to the receipt of a signal that was not caught. Code: %d\n", WTERMSIG(childStatus));
     }
 
     printf("Children IDs from parent proccess: %d and %d\nEnd of parent existence\n\n", children[0], children[1]);
