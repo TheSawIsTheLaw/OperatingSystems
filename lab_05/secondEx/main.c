@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "stdlib.h"
-#include "time.h"
 #include "sys/stat.h"
 #include <sys/ipc.h>
 #include <sys/sem.h>
@@ -10,8 +9,8 @@
 
 #define SEM_AMOUNT 4
 
-#define WRITERS_AMOUNT 5
-#define READERS_AMOUNT 3
+#define WRITERS_AMOUNT 3
+#define READERS_AMOUNT 5
 
 #define ACT_READER 0
 #define ACT_WRITER 1
@@ -63,7 +62,7 @@ void writer(int semID, int writerID)
     }
 
     (*sharedMemoryPtr)++;
-    printf("\nWriter[ID = %d]: write value %d\n", writerID, *sharedMemoryPtr);
+    printf("<<---Writer[ID = %d]: write value %d\n", writerID, *sharedMemoryPtr);
 
     if (semop(semID, stopWrite, 2) == -1)
     {
@@ -82,7 +81,7 @@ void reader(int semID, int readerID)
         exit(SEMOP_ERR);
     }
 
-    printf("\nReader[ID = %d]: reads value %d\n", readerID, *sharedMemoryPtr);
+    printf("->>Reader[ID = %d]: reads value %d\n", readerID, *sharedMemoryPtr);
 
     if (semop(semID, stopRead, 1) == -1)
     {

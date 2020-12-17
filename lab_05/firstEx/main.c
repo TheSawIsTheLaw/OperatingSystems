@@ -14,10 +14,10 @@
 #define SEM_E 1
 #define SEM_F 2
 
-#define EMPTY_NUM 9
+#define EMPTY_NUM 20
 
-#define PRODUCE_NUM 3
-#define CONSUME_NUM 3
+#define PRODUCE_NUM 6
+#define CONSUME_NUM 6
 
 #define SIZE 3
 
@@ -45,7 +45,7 @@ struct sembuf readEnd[2] = { {SEM_BIN, 1, 1}, {SEM_E, 1, 1} };
 void producer(int semID, int prodID)
 {
     srand(time(NULL));
-    sleep(rand() % 2 + 1);
+    sleep(rand() % 4);
 
     if (semop(semID, prodStart, 2) == -1)
     {
@@ -55,7 +55,7 @@ void producer(int semID, int prodID)
 
     sharedMemoryPtr[OFFSET + sharedMemoryPtr[0]] = sharedMemoryPtr[0];
 
-    printf("\n%d Producer[ID = %d]: wrote %d\n", getpid(), prodID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[0]]);
+    printf("<<---Producer[ID = %d]: wrote %d\n", prodID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[0]]);
     sharedMemoryPtr[0]++;
 
     if (semop(semID, prodEnd, 2) == -1)
@@ -68,14 +68,14 @@ void producer(int semID, int prodID)
 void consumer(int semID, int consID)
 {
     srand(time(NULL));
-    sleep(rand() % 2 + 1);
+    sleep(rand() % 2);
     if (semop(semID, readStart, 2) == -1)
     {
         perror("Consumer semop error");
         exit(SEMOP_ERR);
     }
 
-    printf("\n%d Consumer[ID = %d]: read %d\n", getpid(), consID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[1]]);
+    printf("->>Consumer[ID = %d]: read %d\n", consID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[1]]);
     sharedMemoryPtr[1]++;
 
     if (semop(semID, readEnd, 2) == -1)
@@ -147,7 +147,7 @@ int main()
     }
 
     int status;
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < CONSUME_NUM + PRODUCE_NUM; i++)
         wait(&status);
 
     if (shmdt(sharedMemoryPtr) == -1)
@@ -162,7 +162,7 @@ int main()
         exit(MEM_ERR);
     }
 
-    printf("This is the end of the light");
+    printf("\n\nThis is the end of the task\n");
 
     exit(0);
 }
