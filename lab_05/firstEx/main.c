@@ -19,7 +19,7 @@
 #define PRODUCE_NUM 6
 #define CONSUME_NUM 6
 
-#define SIZE 3
+#define CYCLES 3
 
 #define SEM_ERROR 1
 #define SEM_SET_ERR 2
@@ -33,13 +33,26 @@
 
 int *sharedMemoryPtr = NULL;
 
-int curNumProd = 0;
-int curNumCons = 0;
-
-struct sembuf prodStart[2] = { {SEM_E, -1, 1}, {SEM_BIN, -1, 1} };
-struct sembuf prodEnd[2] = { {SEM_BIN, 1, 1}, {SEM_F, 1, 1} };
-struct sembuf readStart[2] = { {SEM_F, -1, 1}, {SEM_BIN, -1, 1} };
-struct sembuf readEnd[2] = { {SEM_BIN, 1, 1}, {SEM_E, 1, 1} };
+struct sembuf prodStart[2] =
+{
+    {SEM_E, -1, 1},
+    {SEM_BIN, -1, 1}
+};
+struct sembuf prodEnd[2] =
+{
+    {SEM_BIN, 1, 1},
+    {SEM_F, 1, 1}
+};
+struct sembuf readStart[2] =
+{
+    {SEM_F, -1, 1},
+    {SEM_BIN, -1, 1}
+};
+struct sembuf readEnd[2] =
+{
+    {SEM_BIN, 1, 1},
+    {SEM_E, 1, 1}
+};
 
 
 void producer(int semID, int prodID)
@@ -68,7 +81,7 @@ void producer(int semID, int prodID)
 void consumer(int semID, int consID)
 {
     srand(time(NULL));
-    sleep(rand() % 2);
+    sleep(rand() % 4);
     if (semop(semID, readStart, 2) == -1)
     {
         perror("Consumer semop error");
@@ -120,7 +133,7 @@ int main()
 
     pid_t childID = -1;
 
-    for (int i = 0; i < SIZE; ++i)
+    for (int i = 0; i < CYCLES; ++i)
     {
         if ((childID = fork()) == -1)
         {
