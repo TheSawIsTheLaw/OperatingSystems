@@ -32,9 +32,12 @@
 #define OFFSET 2
 
 int *sharedMemoryPtr = NULL;
+char *sharedCharMemoryPtr = NULL;
 
 int curNumProd = 0;
 int curNumCons = 0;
+
+char *alphabet = "abcdefghijklmnopqrstuvwxyz";
 
 struct sembuf prodStart[2] = { {SEM_E, -1, 1}, {SEM_BIN, -1, 1} };
 struct sembuf prodEnd[2] = { {SEM_BIN, 1, 1}, {SEM_F, 1, 1} };
@@ -53,9 +56,9 @@ void producer(int semID, int prodID)
         exit(SEMOP_ERR);
     }
 
-    sharedMemoryPtr[OFFSET + sharedMemoryPtr[0]] = sharedMemoryPtr[0];
+    sharedCharMemoryPtr[sharedMemoryPtr[0]] = alphabet[sharedMemoryPtr[0]];
 
-    printf("<<---Producer[ID = %d]: wrote %d\n", prodID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[0]]);
+    printf("<<---Producer[ID = %d]: wrote %c\n", prodID, sharedCharMemoryPtr[sharedMemoryPtr[0]]);
     sharedMemoryPtr[0]++;
 
     if (semop(semID, prodEnd, 2) == -1)
@@ -75,7 +78,7 @@ void consumer(int semID, int consID)
         exit(SEMOP_ERR);
     }
 
-    printf("->>Consumer[ID = %d]: read %d\n", consID, sharedMemoryPtr[OFFSET + sharedMemoryPtr[1]]);
+    printf("->>Consumer[ID = %d]: read %c\n", consID, sharedCharMemoryPtr[sharedMemoryPtr[1]]);
     sharedMemoryPtr[1]++;
 
     if (semop(semID, readEnd, 2) == -1)
@@ -102,7 +105,7 @@ int main()
         exit(SEM_SET_ERR);
     }
 
-    int shmID = shmget(IPC_PRIVATE, (2 + EMPTY_NUM) * sizeof(int), S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    int shmID = shmget(IPC_PRIVATE, 2 * sizeof(int) + EMPTY_NUM * sizeof(char), S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (shmID == -1)
     {
         perror("Shared memory creation error.");
@@ -117,6 +120,8 @@ int main()
         perror("Memory all error.");
         exit(MEM_ERR);
     }
+
+    sharedCharMemoryPtr = (char *)(sharedMemoryPtr + 2 * sizeof(int));
 
     pid_t childID = -1;
 
