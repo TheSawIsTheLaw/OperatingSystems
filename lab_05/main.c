@@ -14,10 +14,10 @@
 #define SEM_E 1
 #define SEM_F 2
 
-#define EMPTY_NUM 15
+#define EMPTY_NUM 9
 
-#define PRODUCE_NUM 5
-#define CONSUME_NUM 5
+#define PRODUCE_NUM 3
+#define CONSUME_NUM 3
 
 #define SIZE 3
 
