@@ -87,8 +87,6 @@ void consumer(int semID, int consID)
 
 int main()
 {
-    srand(time(NULL));
-
     int semID = semget(IPC_PRIVATE, SEM_AMOUNT, IPC_CREAT | S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (semID == -1)
     {
@@ -149,7 +147,7 @@ int main()
     }
 
     int status;
-    for (int i = 0; i < 30; i++)
+    for (int i = 0; i < 6; i++)
         wait(&status);
 
     if (shmdt(sharedMemoryPtr) == -1)
@@ -157,13 +155,12 @@ int main()
         perror("SHMDT error");
         exit(MEM_ERR);
     }
-    exit(0);
+
     if (shmctl(shmID, IPC_RMID, NULL) == -1)
     {
         perror("SHMCTL error");
         exit(MEM_ERR);
     }
-    exit(0);
 
     printf("This is the end of the light");
 
