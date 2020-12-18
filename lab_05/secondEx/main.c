@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "stdlib.h"
+#include "time.h"
 #include "sys/stat.h"
 #include <sys/ipc.h>
 #include <sys/sem.h>
@@ -26,36 +27,37 @@
 
 struct sembuf startRead[] =
 {
-    { WAIT_READERS, 1, 1 },
-    { ACTIVE_WRITERS,  0, 1 },
-    { WAIT_WRITERS, 0, 1 },
-    { ACTIVE_READERS, 1, 1 },
-    { WAIT_READERS, -1, 1}
+    { WAIT_READERS, 1, 0 },
+    { ACTIVE_WRITERS,  0, 0 },
+    { WAIT_WRITERS, 0, 0 },
+    { ACTIVE_READERS, 1, 0 },
+    { WAIT_READERS, -1, 0 }
 };
 
 struct sembuf stopRead[] =
 {
-    { ACTIVE_READERS, -1, 1 }
+    { ACTIVE_READERS, -1, 0 }
 };
 
 struct sembuf startWrite[] =
 {
-    { WAIT_WRITERS, 1, 1 },
-    { ACTIVE_READERS, 0, 1 },
-    { ACTIVE_WRITERS, 0, 1 },
-    { ACTIVE_WRITERS, 1, 1 },
-    { WAIT_WRITERS, -1, 1}
+    { WAIT_WRITERS, 1, 0 },
+    { ACTIVE_READERS, 0, 0 },
+    { ACTIVE_WRITERS, 0, 0 },
+    { ACTIVE_WRITERS, 1, 0 },
+    { WAIT_WRITERS, -1, 0 }
 };
 
 struct sembuf stopWrite[] =
 {
-    { ACTIVE_WRITERS, -1, 1 }
+    { ACTIVE_WRITERS, -1, 0 }
 };
 
 int *sharedMemoryPtr = NULL;
 
 void writer(int semID, int writerID)
 {
+    srand(time(NULL));
     if (semop(semID, startWrite, 5) == -1)
     {
         perror("Semop error");
@@ -71,11 +73,12 @@ void writer(int semID, int writerID)
         exit(SEMOP_ERR);
     }
 
-    sleep(1);
+    sleep(rand() % 3 + 1);
 }
 
 void reader(int semID, int readerID)
 {
+    srand(time(NULL));
     if (semop(semID, startRead, 5) == -1)
     {
         perror("Semop error");
@@ -90,7 +93,7 @@ void reader(int semID, int readerID)
         exit(SEMOP_ERR);
     }
 
-    sleep(2);
+    sleep(rand() % 3 + 1);
 }
 
 int main()
