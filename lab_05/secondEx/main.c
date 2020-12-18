@@ -12,10 +12,10 @@
 #define WRITERS_AMOUNT 3
 #define READERS_AMOUNT 5
 
-#define ACT_READER 0
-#define ACT_WRITER 1
-#define BIN_ACT_WRITER 2
-#define WAIT_WRITER 3
+#define ACTIVE_READERS 0
+#define ACTIVE_WRITERS 1
+#define WAIT_READERS 2
+#define WAIT_WRITERS 3
 
 #define SEM_ERROR 1
 #define SEM_SET_ERR 2
@@ -26,29 +26,30 @@
 
 struct sembuf startRead[] =
 {
-    { WAIT_WRITER, 0, 1 },
-    { ACT_WRITER,  0, 1 },
-    { ACT_READER,  1, 1 }
+    { WAIT_READERS, 1, 1 },
+    { ACTIVE_WRITERS,  0, 1 },
+    { WAIT_WRITERS, 0, 1 },
+    { ACTIVE_READERS, 1, 1 },
+    { WAIT_READERS, -1, 1}
 };
 
 struct sembuf stopRead[] =
 {
-    { ACT_READER, -1, 1 }
+    { ACTIVE_READERS, -1, 1 }
 };
 
 struct sembuf startWrite[] =
 {
-    { WAIT_WRITER,     1, 1 },
-    { ACT_READER,      0, 1 },
-    { BIN_ACT_WRITER,  -1, 1 },
-    { ACT_WRITER,      1, 1 },
-    { WAIT_WRITER,     -1, 1 }
+    { WAIT_WRITERS, 1, 1 },
+    { ACTIVE_READERS, 0, 1 },
+    { ACTIVE_WRITERS, 0, 1 },
+    { ACTIVE_WRITERS, 1, 1 },
+    { WAIT_WRITERS, -1, 1}
 };
 
 struct sembuf stopWrite[] =
 {
-    { ACT_WRITER,     -1, 1 },
-    { BIN_ACT_WRITER, 1, 1 }
+    { ACTIVE_WRITERS, -1, 1 }
 };
 
 int *sharedMemoryPtr = NULL;
@@ -64,7 +65,7 @@ void writer(int semID, int writerID)
     (*sharedMemoryPtr)++;
     printf("<<---Writer[ID = %d]: write value %d\n", writerID, *sharedMemoryPtr);
 
-    if (semop(semID, stopWrite, 2) == -1)
+    if (semop(semID, stopWrite, 1) == -1)
     {
         perror("Writer semop error");
         exit(SEMOP_ERR);
@@ -75,7 +76,7 @@ void writer(int semID, int writerID)
 
 void reader(int semID, int readerID)
 {
-    if (semop(semID, startRead, 3) == -1)
+    if (semop(semID, startRead, 5) == -1)
     {
         perror("Semop error");
         exit(SEMOP_ERR);
@@ -89,7 +90,7 @@ void reader(int semID, int readerID)
         exit(SEMOP_ERR);
     }
 
-    sleep(1);
+    sleep(2);
 }
 
 int main()
