@@ -25,20 +25,6 @@
 #define FORK_ERR 5
 #define SEMOP_ERR 6
 
-struct sembuf startRead[] =
-{
-    { WAIT_READERS, 1, 0 },
-    { ACTIVE_WRITERS,  0, 0 },
-    { WAIT_WRITERS, 0, 0 },
-    { ACTIVE_READERS, 1, 0 },
-    { WAIT_READERS, -1, 0 }
-};
-
-struct sembuf stopRead[] =
-{
-    { ACTIVE_READERS, -1, 0 }
-};
-
 struct sembuf startWrite[] =
 {
     { WAIT_WRITERS, 1, 0 },
@@ -51,6 +37,20 @@ struct sembuf startWrite[] =
 struct sembuf stopWrite[] =
 {
     { ACTIVE_WRITERS, -1, 0 }
+};
+
+struct sembuf startRead[] =
+{
+    { WAIT_READERS, 1, 0 },
+    { ACTIVE_WRITERS,  0, 0 },
+    { WAIT_WRITERS, 0, 0 },
+    { ACTIVE_READERS, 1, 0 },
+    { WAIT_READERS, -1, 0 }
+};
+
+struct sembuf stopRead[] =
+{
+    { ACTIVE_READERS, -1, 0 }
 };
 
 int *sharedMemoryPtr = NULL;
