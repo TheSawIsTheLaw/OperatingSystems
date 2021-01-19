@@ -2,8 +2,8 @@
 #include <stdbool.h>
 #include <windows.h>
 
-#define WRITERS_SLEEP_IN_MILLI 2500
-#define READERS_SLEEP_IN_MILLI 1000
+#define WRITERS_SLEEP_IN_MILLI 1000
+#define READERS_SLEEP_IN_MILLI 2500
 
 #define WRITERS_AMOUNT 3
 #define READERS_AMOUNT 5
@@ -22,11 +22,11 @@ HANDLE mutex, canRead, canWrite;
 HANDLE writersThreads[WRITERS_AMOUNT];
 HANDLE readersThreads[READERS_AMOUNT];
 
-bool writing = false;
+bool writing = false; // Активный писатель
 
-LONG writersInQueue = 0;
-LONG readersInQueue = 0;
-LONG readingMembers = 0;
+LONG writersInQueue = 0; // Ждущие писатели
+LONG readersInQueue = 0; // Ждущие читатели
+LONG readingMembers = 0; // Активные читатели
 
 int sharedMemory = 0;
 
@@ -76,6 +76,7 @@ void startRead()
     if (writing || writersInQueue > 0)
         WaitForSingleObject(canRead, INFINITE);
 
+    InterlockedDecrement(&readersInQueue);
     InterlockedIncrement(&readingMembers);
     SetEvent(canRead);
 
