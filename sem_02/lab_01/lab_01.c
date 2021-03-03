@@ -13,8 +13,6 @@
 // l - процесс является многопоточным
 
 #include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,10 +20,7 @@
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <syslog.h>
-#include <time.h>
 #include <unistd.h>
-
-#include "error.h"
 #include "sys/file.h"
 #include <pthread.h>
 #include "signal.h"
@@ -35,7 +30,7 @@
 
 sigset_t mask;
 
-int already_running(void) {
+int alreadyRunning(void) {
     int fd;
     char buf[16];
 
@@ -65,21 +60,19 @@ int already_running(void) {
     return 0;
 }
 
-void err_quit(const char *error_message, const char *command) {
-    syslog(LOG_ERR, "%s %s", error_message, command);
+void quit(const char *errMessage, const char *command) {
+    syslog(LOG_ERR, "%s %s", errMessage, command);
     exit(1);
 }
 
-void *thr_fn(void *arg) {
+void *threadFun(void *arg) {
     int err, signo;
 
     for (;;) {
         syslog(LOG_INFO, "Поток: %ld", pthread_self());
         err = sigwait(&mask, &signo);
-        if (err != 0) {
-            syslog(LOG_ERR, "ошибка вызова функции sigwait");
-            exit(1);
-        }
+        if (err != 0)
+            quit("ошибка вызова функции sigwait", "");
         switch (signo) {
             case SIGHUP:
                 syslog(LOG_INFO, "Вызов getlogin. Результат: %s", getlogin());
@@ -100,48 +93,43 @@ void daemonize(const char *cmd) {
     struct rlimit rl;
     struct sigaction sa;
     // Сбросить маску режима создания файла
-    // 1 правило, для возможности создания файлов с любыми правами доступа
     umask(0);
 
     // Получить максимально возможный номер дескриптора файла
     if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
-        err_quit("%s: невозможно получить максимальный номер дескриптора ",
+        quit("%s: невозможно получить максимальный номер дескриптора ",
                  cmd);
 
-    // Создаем дочерний процесс и завершаем предок
-    // 2 правило
+    // Создаем дочерний процесс и завершаем предка
     if ((pid = fork()) < 0)
-        err_quit("%s: ошибка вызова функции fork", cmd);
-    else if (pid != 0) {  // родительский процесс
+        quit("%s: ошибка вызова функции fork", cmd);
+    else if (pid != 0) {
         exit(0);
     }
     // Создание новой сессии
     // Процесс становится лидером новой сессии, лидером новой группы процессов,
-    // теруяет управляющий терминал 3 правило
+    // теряет управляющий терминал
     setsid();
 
-    // Обеспечить невозможность обретения управляющего терминала в будущем
+    // Убираем возможность обретения управляющего терминала
     // Игнорирование сообщения о потере сигнала с управляющим терминалом
     sa.sa_handler = SIG_IGN;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     if (sigaction(SIGHUP, &sa, NULL) < 0)
-        err_quit("%s: невозможно игнорировать сигнал SIGHUP ", cmd);
+        quit("%s: невозможно игнорировать сигнал SIGHUP ", cmd);
 
     // Назначить корневой каталог текущим рабочим каталогом,
-    // если вдруг он будет запушен с подмонтированной ФС
-    // 4 правило
+    // если вдруг он будет запушен с подмонтированной файловой системы
     if (chdir("/") < 0)
-        err_quit("%s: невозможно сделать текущим рабочим каталогом /", cmd);
+        quit("%s: невозможно сделать текущим рабочим каталогом /", cmd);
 
     // Закрыть все открытые фaйловые дескрипторы
-    // 5 правило
     if (rl.rlim_max == RLIM_INFINITY) rl.rlim_max = 1024;
     for (i = 0; i < rl.rlim_max; i++) close(i);
 
     // Присоединить файловые дескрипторы 0, 1 и 2 к /dev/null
-    // Чтобы стандартные функции не влияли на работу демона
-    // 6 правило
+    // чтобы стандартные функции не влияли на работу демона
     fd0 = open("/dev/null", O_RDWR);
     fd1 = dup(0);
     fd2 = dup(0);
@@ -156,46 +144,35 @@ void daemonize(const char *cmd) {
 }
 
 int main() {
-    char *cmd = "daemon";
-    daemonize(cmd);
+    daemonize("DAEMON");
 
-    if (already_running()) {
-        syslog(LOG_ERR, "Демон уже запущен");
-        exit(1);
-    }
+    if (alreadyRunning())
+        quit("демон уже запущен", "");
 
     int err;
 	pthread_t tid;
     struct sigaction sa;
 
     /*
-        Восстановить действие по умолчанию для сигнала SIGHUP 
-        и заблокировать все сигналы
+     * Восстановить действие по умолчанию для сигнала SIGHUP
+     * и заблокировать все сигналы
     */
     sa.sa_handler = SIG_DFL;
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = 0;
 	if (sigaction(SIGHUP, &sa, NULL) < 0)
-    {
-        err_quit("невозможно восстановить действие SIG_DFL для SIGHUP", "");
-        exit(1);   
-    }
+        quit("невозможно восстановить действие SIG_DFL для SIGHUP", "");
+
 	sigfillset(&mask);
 	if ((err = pthread_sigmask(SIG_BLOCK, &mask, NULL)) != 0)
-    {
-        err_quit("ошибка выполнения операции SIG_BLOCK", "");
-        exit(1);
-    }
+        quit("ошибка выполнения операции SIG_BLOCK", "");
 
     /*
-     *  Создание потока, который будет заниматься обработкой SIGHYP и SIGTERM
+     *  Создание потока, который будет заниматься обработкой SIGHUP и SIGTERM
      */
-    err = pthread_create(&tid, NULL, thr_fn, 0);
+    err = pthread_create(&tid, NULL, threadFun, 0);
 	if (err != 0)
-    {
-        err_quit("невозможно создать поток", "");
-        exit(1);
-    }
+        quit("невозможно создать поток", "");
 
     while (1) {
         syslog(LOG_INFO, "Идентификатор созданного потока для обработки сигнала: %ld", tid);
