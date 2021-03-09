@@ -44,6 +44,8 @@ int alreadyRunning(void) {
         exit(1);
     }
 
+    // непрерываемый сон - сон в ожидании завершения воода/вывода
+
     // проверка файла на блокировку
     if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
         if (errno == EWOULDBLOCK) {
@@ -98,7 +100,7 @@ void daemonize(const char *cmd) {
     // Сбросить маску режима создания файла
     umask(0);
 
-    // Получить максимально возможный номер дескриптора файла
+    // Определяем максимально возможный нмер дескриптора
     if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
         quit("%s: невозможно получить максимальный номер дескриптора ",
                  cmd);
@@ -127,7 +129,7 @@ void daemonize(const char *cmd) {
     if (chdir("/") < 0)
         quit("%s: невозможно сделать текущим рабочим каталогом /", cmd);
 
-    // Закрыть все открытые фaйловые дескрипторы
+    // Закрыть все открытые фaйловые дескрипторы, используя полученный максимально возможный номер дескриптора
     if (rl.rlim_max == RLIM_INFINITY) rl.rlim_max = 1024;
     for (i = 0; i < rl.rlim_max; i++) close(i);
 
@@ -173,9 +175,28 @@ int main() {
     /*
      *  Создание потока, который будет заниматься обработкой SIGHUP и SIGTERM
      */
-    err = pthread_create(&tid, NULL, threadFun, 0);
-	if (err != 0)
-        quit("невозможно создать поток", "");
+    // err = pthread_create(&tid, NULL, threadFun, 0);
+	// if (err != 0)
+        // quit("невозможно создать поток", "");
+
+// Эксперимент!!!
+    int signo;
+
+    for (;;) {
+        err = sigwait(&mask, &signo);
+        if (err != 0)
+            quit("ошибка вызова функции sigwait", "");
+        switch (signo) {
+            case SIGHUP:
+                syslog(LOG_INFO, "Вызов getlogin. Результат: %s", getlogin());
+                break;
+            case SIGTERM:
+                syslog(LOG_INFO, "получен сигнал SIGTERM; выход");
+                exit(0);
+            default:
+                syslog(LOG_INFO, "получен непредвиденный сигнал %d\n", signo);
+        }
+    }
 
     while (1) {
         syslog(LOG_INFO, "Идентификатор созданного потока для обработки сигнала: %ld", tid);
