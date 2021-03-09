@@ -10,7 +10,7 @@
 struct stackItem
 {
     char fileName[MAX_NAME_SIZE];
-    int len;
+    int depth;
 };
 
 struct stack

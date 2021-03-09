@@ -19,13 +19,13 @@ void push(struct stack *st, struct stackItem *item)
     }
 
     strcpy(st->items[st->topInd].fileName, item->fileName);
-    st->items[st->topInd].len = item->len;
+    st->items[st->topInd].depth = item->depth;
     st->topInd++;
 }
 
 struct stackItem pop(struct stack *st)
 {
-    struct stackItem item = {.fileName = "", .len = 0};
+    struct stackItem item = {.fileName = "", .depth = 0};
 
     if (empty(st))
     {
@@ -37,7 +37,7 @@ struct stackItem pop(struct stack *st)
     {
         st->topInd--;
         strcpy(item.fileName, st->items[st->topInd].fileName);
-        item.len = st->items[st->topInd].len;
+        item.depth = st->items[st->topInd].depth;
         return item;
     }
     else

@@ -38,6 +38,22 @@ int main(int argc, char *argv[])
 #define FTW_NS 4  /* файл, информацию о котором */
 /* невозможно получить с помощью stat */
 
+void printStats()
+{
+    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
+    if (!ntot)
+        ntot = 1;
+
+    printf("Обычные файлы: %7ld, %5.2f %%\n", nreg, nreg * 100.0 / ntot);
+    printf("Каталоги:   %7ld, %5.2f %%\n", ndir, ndir * 100.0 / ntot);
+    printf("Специальные файлы блочных устройств: %7ld, %5.2f %%\n", nblk, nblk * 100.0 / ntot);
+    printf("Специальные файлы символьных устройств:  %7ld, %5.2f %%\n", nchr, nchr * 100.0 / ntot);
+    printf("FIFO:         %7ld, %5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
+    printf("Символические ссылки:%7ld, %5.2f %%\n", nslink, nslink * 100.0 / ntot);
+    printf("Сокеты:       %7ld, %5.2f %%\n", nsock, nsock * 100.0 / ntot);
+    printf("Всего:         %7ld\n", ntot);
+}
+
 /* Первый вызов для введенного каталога */
 static int myFtw(char *pathname, myfunc *func)
 {
@@ -50,27 +66,17 @@ static int myFtw(char *pathname, myfunc *func)
 
     init(&stk);
 
-    struct stackItem item = {.fileName = ".", .len = 0};
+    struct stackItem item = {.depth = 0};
+    strcpy(item.fileName, pathname);
     push(&stk, &item);
 
     while (!empty(&stk))
     {
         struct stackItem item = pop(&stk);
-        doPath(func, item.fileName, item.len);
+        doPath(func, item.fileName, item.depth);
     }
 
-    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
-    if (!ntot)
-        ntot = 1;
-
-    printf("regular files: %7ld, %5.2f %%\n", nreg, nreg * 100.0 / ntot);
-    printf("directories:   %7ld, %5.2f %%\n", ndir, ndir * 100.0 / ntot);
-    printf("block devices: %7ld, %5.2f %%\n", nblk, nblk * 100.0 / ntot);
-    printf("char devices:  %7ld, %5.2f %%\n", nchr, nchr * 100.0 / ntot);
-    printf("FIFOs:         %7ld, %5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
-    printf("symbolic links:%7ld, %5.2f %%\n", nslink, nslink * 100.0 / ntot);
-    printf("sockets:       %7ld, %5.2f %%\n", nsock, nsock * 100.0 / ntot);
-    printf("Total:         %7ld\n", ntot);
+    printStats();
 
     return 0;
 }
@@ -80,9 +86,9 @@ static int myFtw(char *pathname, myfunc *func)
  * каталогом, для него вызывается lstat(), func() и затем выполняется возврат.
  * Для директорий производится рекурсивный вызов функции.
  */
-static int doPath(myfunc *func, char *fullpath, int len)
+static int doPath(myfunc *func, char *fullpath, int depth)
 {
-    if (len < 0)
+    if (depth < 0)
     {
         if (chdir(fullpath) == -1)
         {
@@ -121,6 +127,8 @@ static int doPath(myfunc *func, char *fullpath, int len)
             nsock++;
             break;
         }
+        // ЧИНИ ЭТО УБОЖЕСТВО
+        func(fullpath, FTW_D, depth);
 
         return 1;
     }
@@ -130,7 +138,7 @@ static int doPath(myfunc *func, char *fullpath, int len)
      * а затем обработаем все файлы в каталоге.
      */
     ndir++;
-    func(fullpath, FTW_D, len);
+    func(fullpath, FTW_D, depth);
 
     if ((dp = opendir(fullpath)) == NULL) /* Каталог не доступен */
         return 1;
@@ -142,18 +150,18 @@ static int doPath(myfunc *func, char *fullpath, int len)
         return 1;
     }
 
-    len += 5;
+    depth++;
 
-    struct stackItem item = {.fileName = "..", .len = -1};
+    struct stackItem item = {.fileName = "..", .depth = -1};
     push(&stk, &item);
 
     while ((dirp = readdir(dp)) != NULL)
     {
         /* Пропуск каталогов . и .. */
-        if (strcmp(dirp->d_name, ".") != 0 && strcmp(dirp->d_name, "..") != 0 && strcmp(dirp->d_name, ".git") != 0)
+        if (strcmp(dirp->d_name, ".") != 0 && strcmp(dirp->d_name, "..") != 0)
         {
             strcpy(item.fileName, dirp->d_name);
-            item.len = len;
+            item.depth = depth;
             push(&stk, &item);
         }
     }
@@ -164,14 +172,13 @@ static int doPath(myfunc *func, char *fullpath, int len)
     return 0;
 }
 
-static int myFunc(const char *pathname, int type, int len)
+static int myFunc(const char *pathname, int type, int depth)
 {
+    // Сюда перемещаем подсчёт в кейсах и вывод
     if (type == FTW_D)
     {
-        for (int i = 0; i < len; i += 5)
-        {
+        for (int i = 0; i < depth; i++)
             printf("    |");
-        }
         printf("    |— %s\n", pathname);
     }
 
