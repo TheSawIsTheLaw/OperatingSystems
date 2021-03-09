@@ -3,3 +3,11 @@
 
 *.pro*
 *build*
+
+*.vs*
+
+*flags
+*.config
+*.creator*
+*.files
+*.includes
