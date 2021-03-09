@@ -15,7 +15,7 @@ static int myFtw(char *, myfunc *);
 static int doPath(myfunc *, char *, int);
 static struct stack stk;
 
-//static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
+static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
 
 int main(int argc, char *argv[])
 {
@@ -59,17 +59,18 @@ static int myFtw(char *pathname, myfunc *func)
         doPath(func, item.fileName, item.len);
     }
 
-//    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
-//    if (!ntot) ntot = 1;
+    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
+    if (!ntot)
+        ntot = 1;
 
-//    printf("regular files: %7ld, %5.2f %%\n", nreg, nreg * 100.0 / ntot);
-//    printf("directories:   %7ld, %5.2f %%\n", ndir, ndir * 100.0 / ntot);
-//    printf("block devices: %7ld, %5.2f %%\n", nblk, nblk * 100.0 / ntot);
-//    printf("char devices:  %7ld, %5.2f %%\n", nchr, nchr * 100.0 / ntot);
-//    printf("FIFOs:         %7ld, %5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
-//    printf("symbolic links:%7ld, %5.2f %%\n", nslink, nslink * 100.0 / ntot);
-//    printf("sockets:       %7ld, %5.2f %%\n", nsock, nsock * 100.0 / ntot);
-//    printf("Total:         %7ld\n", ntot);
+    printf("regular files: %7ld, %5.2f %%\n", nreg, nreg * 100.0 / ntot);
+    printf("directories:   %7ld, %5.2f %%\n", ndir, ndir * 100.0 / ntot);
+    printf("block devices: %7ld, %5.2f %%\n", nblk, nblk * 100.0 / ntot);
+    printf("char devices:  %7ld, %5.2f %%\n", nchr, nchr * 100.0 / ntot);
+    printf("FIFOs:         %7ld, %5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
+    printf("symbolic links:%7ld, %5.2f %%\n", nslink, nslink * 100.0 / ntot);
+    printf("sockets:       %7ld, %5.2f %%\n", nsock, nsock * 100.0 / ntot);
+    printf("Total:         %7ld\n", ntot);
 
     return 0;
 }
@@ -98,12 +99,37 @@ static int doPath(myfunc *func, char *fullpath, int len)
         return 1;
 
     if (S_ISDIR(statbuf.st_mode) == 0) /* Если не каталог */
+    {
+        switch (statbuf.st_mode & __S_IFMT)
+        {
+        case S_IFREG:
+            nreg++;
+            break;
+        case S_IFBLK:
+            nblk++;
+            break;
+        case S_IFCHR:
+            nchr++;
+            break;
+        case S_IFIFO:
+            nfifo++;
+            break;
+        case S_IFLNK:
+            nslink++;
+            break;
+        case S_IFSOCK:
+            nsock++;
+            break;
+        }
+
         return 1;
+    }
 
     /*
      * Это каталог. Сначала вызовем func(),
      * а затем обработаем все файлы в каталоге.
      */
+    ndir++;
     func(fullpath, FTW_D, len);
 
     if ((dp = opendir(fullpath)) == NULL) /* Каталог не доступен */
@@ -142,39 +168,11 @@ static int myFunc(const char *pathname, int type, int len)
 {
     if (type == FTW_D)
     {
-//        switch (type)
-//        {
-//        case __S_IFREG:
-//            nreg++;
-//            break;
-//        case __S_IFBLK:
-//            nblk++;
-//            break;
-//        case __S_IFCHR:
-//            nchr++;
-//            break;
-//        case __S_IFIFO:
-//            nfifo++;
-//            break;
-//        case __S_IFLNK:
-//            nslink++;
-//            break;
-//        case __S_IFSOCK:
-//            nsock++;
-//            break;
-//        default:
-//            printf("Пошёл нахуй %o", S_IFREG);
-//            break;
-//        }
-
-        for (int i = 0; i < len; i++)
+        for (int i = 0; i < len; i += 5)
         {
-            if (i % 5 == 1 && i / 5 != 0)
-                printf("|");
-            else
-                printf(" ");
+            printf("    |");
         }
-        printf(" |— %s\n", pathname);
+        printf("    |— %s\n", pathname);
     }
 
     return 0;
