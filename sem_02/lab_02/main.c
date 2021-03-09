@@ -8,12 +8,14 @@
 #include "stack.h"
 
 /* тип функции, которая будет вызываться для каждого встреченного файла */
-typedef int AnyType(const char *, int, int);
+typedef int myfunc(const char *, int, int);
 
-static AnyType myFunc;
-static int myFtw(char *, AnyType *);
-static int doPath(AnyType *, char *, int);
+static myfunc myFunc;
+static int myFtw(char *, myfunc *);
+static int doPath(myfunc *, char *, int);
 static struct stack stk;
+
+//static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
 
 int main(int argc, char *argv[])
 {
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
 /* невозможно получить с помощью stat */
 
 /* Первый вызов для введенного каталога */
-static int myFtw(char *pathname, AnyType *func)
+static int myFtw(char *pathname, myfunc *func)
 {
     /* Изменение текущей директории для использования коротких имен */
     if (chdir(pathname) == -1)
@@ -56,6 +58,19 @@ static int myFtw(char *pathname, AnyType *func)
         struct stackItem item = pop(&stk);
         doPath(func, item.fileName, item.len);
     }
+
+//    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
+//    if (!ntot) ntot = 1;
+
+//    printf("regular files: %7ld, %5.2f %%\n", nreg, nreg * 100.0 / ntot);
+//    printf("directories:   %7ld, %5.2f %%\n", ndir, ndir * 100.0 / ntot);
+//    printf("block devices: %7ld, %5.2f %%\n", nblk, nblk * 100.0 / ntot);
+//    printf("char devices:  %7ld, %5.2f %%\n", nchr, nchr * 100.0 / ntot);
+//    printf("FIFOs:         %7ld, %5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
+//    printf("symbolic links:%7ld, %5.2f %%\n", nslink, nslink * 100.0 / ntot);
+//    printf("sockets:       %7ld, %5.2f %%\n", nsock, nsock * 100.0 / ntot);
+//    printf("Total:         %7ld\n", ntot);
+
     return 0;
 }
 
@@ -64,7 +79,7 @@ static int myFtw(char *pathname, AnyType *func)
  * каталогом, для него вызывается lstat(), func() и затем выполняется возврат.
  * Для директорий производится рекурсивный вызов функции.
  */
-static int doPath(AnyType *func, char *fullpath, int len)
+static int doPath(myfunc *func, char *fullpath, int len)
 {
     if (len < 0)
     {
@@ -80,14 +95,10 @@ static int doPath(AnyType *func, char *fullpath, int len)
     DIR *dp;
 
     if (lstat(fullpath, &statbuf) == -1) /* Ошибка вызова stat */
-    {
         return 1;
-    }
 
     if (S_ISDIR(statbuf.st_mode) == 0) /* Если не каталог */
-    {
         return 1;
-    }
 
     /*
      * Это каталог. Сначала вызовем func(),
@@ -96,9 +107,7 @@ static int doPath(AnyType *func, char *fullpath, int len)
     func(fullpath, FTW_D, len);
 
     if ((dp = opendir(fullpath)) == NULL) /* Каталог не доступен */
-    {
         return 1;
-    }
 
     /* Изменение текущей директории для использования коротких имен */
     if (chdir(fullpath) == -1)
@@ -133,6 +142,31 @@ static int myFunc(const char *pathname, int type, int len)
 {
     if (type == FTW_D)
     {
+//        switch (type)
+//        {
+//        case __S_IFREG:
+//            nreg++;
+//            break;
+//        case __S_IFBLK:
+//            nblk++;
+//            break;
+//        case __S_IFCHR:
+//            nchr++;
+//            break;
+//        case __S_IFIFO:
+//            nfifo++;
+//            break;
+//        case __S_IFLNK:
+//            nslink++;
+//            break;
+//        case __S_IFSOCK:
+//            nsock++;
+//            break;
+//        default:
+//            printf("Пошёл нахуй %o", S_IFREG);
+//            break;
+//        }
+
         for (int i = 0; i < len; i++)
         {
             if (i % 5 == 1 && i / 5 != 0)
