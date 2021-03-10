@@ -6,11 +6,9 @@
 #include <unistd.h>
 
 #include "stack.h"
+#include "stats.h"
 
 #define RESET "\033[0m"
-#define CYAN "\033[0;36m"
-#define PURPLE "\033[0;35m"
-#define YELLOW "\033[0;33m"
 #define RED "\033[0;31m"
 
 #define FTW_F 1 // Файл, не являющийся каталогом
@@ -23,52 +21,7 @@ typedef int myfunc(const char *, int, int);
 
 static struct stack stk;
 
-static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
-
-// Приведение статистики
-void printStats()
-{
-    ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
-    if (!ntot)
-        ntot = 1;
-
-    printf(YELLOW);
-    printf("Обычные файлы:                          %-7ld %-5.2f %%\n", nreg, nreg * 100.0 / ntot);
-    printf("Каталоги:                               %-7ld %-5.2f %%\n", ndir, ndir * 100.0 / ntot);
-    printf("Специальные файлы блочных устройств:    %-7ld %-5.2f %%\n", nblk, nblk * 100.0 / ntot);
-    printf("Специальные файлы символьных устройств: %-7ld %-5.2f %%\n", nchr, nchr * 100.0 / ntot);
-    printf("FIFO:                                   %-7ld %-5.2f %%\n", nfifo, nfifo * 100.0 / ntot);
-    printf("Символические ссылки:                   %-7ld %-5.2f %%\n", nslink, nslink * 100.0 / ntot);
-    printf("Сокеты:                                 %-7ld %-5.2f %%\n", nsock, nsock * 100.0 / ntot);
-    printf("Всего:                                  %-7ld\n", ntot);
-    printf(RESET);
-}
-
-// Инкрементация статистических данных
-void incStats(struct stat *mode)
-{
-    switch (mode->st_mode & S_IFMT)
-    {
-    case S_IFREG:
-        nreg++;
-        break;
-    case S_IFBLK:
-        nblk++;
-        break;
-    case S_IFCHR:
-        nchr++;
-        break;
-    case S_IFIFO:
-        nfifo++;
-        break;
-    case S_IFLNK:
-        nslink++;
-        break;
-    case S_IFSOCK:
-        nsock++;
-        break;
-    }
-}
+static statistics stats;
 
 // Обход дерева каталогов
 int doPath(myfunc *func, char *fullpath, int depth)
@@ -88,7 +41,7 @@ int doPath(myfunc *func, char *fullpath, int depth)
     if (!S_ISDIR(statbuf.st_mode))
     {
         // Это не каталог
-        incStats(&statbuf);
+        incStats(&statbuf, &stats);
         func(fullpath, FTW_F, depth);
 
         return SUCCESS;
@@ -96,7 +49,7 @@ int doPath(myfunc *func, char *fullpath, int depth)
 
     // Это каталог
     func(fullpath, FTW_D, depth);
-    ndir++;
+    stats.ndir++;
 
     if ((dp = opendir(fullpath)) == NULL) /* Каталог не доступен */
         return ERROR;
@@ -155,7 +108,7 @@ static int myFtw(char *pathname, myfunc *func)
         doPath(func, item.fileName, item.depth);
         item = pop(&stk);
     }
-    printStats();
+    printStats(&stats);
 
     return 0;
 }
