@@ -1,8 +1,6 @@
 #include <dirent.h>
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include "stack.h"
@@ -79,10 +77,7 @@ int doPath(myfunc *func, char *fullpath, int depth)
     }
 
     if (closedir(dp) == -1)
-    {
-        printf("Невозможно закрыть каталог %s\n", fullpath);
         return ERROR;
-    }
 
     return SUCCESS;
 }
@@ -100,7 +95,13 @@ static int myFtw(char *pathname, myfunc *func)
     init(&stk);
 
     struct stackItem item = {.depth = 0};
-    strcpy(item.fileName, pathname);
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        printf("%s Ошибка: невозможно получить путь рабочего каталога %s", RED, RESET);
+        return ERROR;
+    }
+    strcpy(item.fileName, cwd);
     push(&stk, &item);
 
     while (!empty(&stk))
@@ -118,12 +119,12 @@ static int myFunc(const char *pathname, int type, int depth)
 {
     printf(PURPLE);
     for (int i = 0; i < depth; i++)
-        printf("    |");
+        printf("    │");
 
     if (type == FTW_F)
         printf(CYAN);
 
-    printf("    |— %s%s\n", pathname, RESET);
+    printf("    ├── %s%s\n", pathname, RESET);
 
     return SUCCESS;
 }
