@@ -31,6 +31,7 @@ int doPath(myfunc *func, char *fullpath, int depth)
         chdir(fullpath);
         return SUCCESS;
     }
+
     struct stat statbuf;
     struct dirent *dirp;
     DIR *dp;
@@ -54,7 +55,6 @@ int doPath(myfunc *func, char *fullpath, int depth)
     if ((dp = opendir(fullpath)) == NULL) /* Каталог не доступен */
         return ERROR;
 
-    /* Изменение текущей директории для использования коротких имен */
     if (chdir(fullpath) == -1)
     {
         closedir(dp);
@@ -84,7 +84,7 @@ int doPath(myfunc *func, char *fullpath, int depth)
         return ERROR;
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // Первичный вызов для переданного программе каталога
@@ -108,9 +108,10 @@ static int myFtw(char *pathname, myfunc *func)
         doPath(func, item.fileName, item.depth);
         item = pop(&stk);
     }
+
     printStats(&stats);
 
-    return 0;
+    return SUCCESS;
 }
 
 static int myFunc(const char *pathname, int type, int depth)
@@ -124,7 +125,7 @@ static int myFunc(const char *pathname, int type, int depth)
 
     printf("    |— %s%s\n", pathname, RESET);
 
-    return 0;
+    return SUCCESS;
 }
 
 int main(int argc, char *argv[])
