@@ -27,22 +27,14 @@ struct stackItem pop(struct stack *st)
 {
     struct stackItem item = {.fileName = "", .depth = 0};
 
-    if (empty(st))
-    {
-        printf("Stack is empty");
-        return item;
-    }
-
     if ((st->topInd) > 0)
     {
         st->topInd--;
         strcpy(item.fileName, st->items[st->topInd].fileName);
         item.depth = st->items[st->topInd].depth;
-        return item;
     }
     else
-    {
-        printf("Стек пуст!\n");
-        return item;
-    }
+        printf("Stack is empty\n");
+
+    return item;
 }

@@ -13,8 +13,8 @@
 #define YELLOW "\033[0;33m"
 #define RED "\033[0;31m"
 
-#define FTW_F 1 /* файл, не являющийся каталогом */
-#define FTW_D 2 /* каталог */
+#define FTW_F 1 // Файл, не являющийся каталогом
+#define FTW_D 2 // Каталог
 
 #define ERROR 1
 #define SUCCESS 0
@@ -25,11 +25,7 @@ static struct stack stk;
 
 static long nreg, ndir, nblk, nchr, nfifo, nslink, nsock, ntot;
 
-/*
- * Обойти дерево каталогов, начиная с каталога "pathname".
- * Пользовательская функция func() вызывается для каждого встреченного файла.
- */
-
+// Приведение статистики
 void printStats()
 {
     ntot = nreg + ndir + nblk + nchr + nfifo + nslink + nsock;
@@ -48,7 +44,8 @@ void printStats()
     printf(RESET);
 }
 
-void incTypes(struct stat *mode)
+// Инкрементация статистических данных
+void incStats(struct stat *mode)
 {
     switch (mode->st_mode & S_IFMT)
     {
@@ -85,12 +82,13 @@ int doPath(myfunc *func, char *fullpath, int depth)
     struct dirent *dirp;
     DIR *dp;
 
-    if (lstat(fullpath, &statbuf) == -1) /* Ошибка вызова stat */
+    if (lstat(fullpath, &statbuf) == -1)
         return ERROR;
 
-    if (!S_ISDIR(statbuf.st_mode)) /* Если не каталог */
+    if (!S_ISDIR(statbuf.st_mode))
     {
-        incTypes(&statbuf);
+        // Это не каталог
+        incStats(&statbuf);
         func(fullpath, FTW_F, depth);
 
         return SUCCESS;
@@ -112,12 +110,13 @@ int doPath(myfunc *func, char *fullpath, int depth)
 
     depth++;
 
+    // Элемент возврата
     struct stackItem item = {.fileName = "..", .depth = -1};
     push(&stk, &item);
 
     while ((dirp = readdir(dp)) != NULL)
     {
-        /* Пропуск каталогов . и .. */
+        // Пропуск . и ..
         if (strcmp(dirp->d_name, ".") != 0 && strcmp(dirp->d_name, "..") != 0)
         {
             strcpy(item.fileName, dirp->d_name);
@@ -135,12 +134,15 @@ int doPath(myfunc *func, char *fullpath, int depth)
     return 0;
 }
 
-/* Первый вызов для введенного каталога */
+// Первичный вызов для переданного программе каталога
 static int myFtw(char *pathname, myfunc *func)
 {
-    /* Изменение текущей директории для использования коротких имен */
+    // Меняем текущую директорию на переданную
     if (chdir(pathname) == -1)
+    {
+        printf("%sПереданного каталога не существует, либо он не доступен%s", RED, RESET);
         return ERROR;
+    }
 
     init(&stk);
 
@@ -180,5 +182,5 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    return myFtw(argv[1], myFunc); /* выполняет всю работу */
+    return myFtw(argv[1], myFunc);
 }
