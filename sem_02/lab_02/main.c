@@ -101,6 +101,7 @@ static int myFtw(char *pathname, myfunc *func)
         printf("%s Ошибка: невозможно получить путь рабочего каталога %s", RED, RESET);
         return ERROR;
     }
+
     strcpy(item.fileName, cwd);
     push(&stk, &item);
 
