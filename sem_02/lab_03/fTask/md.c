@@ -14,11 +14,11 @@ static int __init md_init(void)
    struct task_struct *task = &init_task;
    do
    {
-       printk(KERN_INFO "Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n", 
+       printk(KERN_INFO "~~~~~~ Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n", 
             task->comm, task->pid, task->parent->comm, task->parent->pid);
    } while ((task = next_task(task)) != &init_task);
 
-   printk(KERN_INFO "Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n",
+   printk(KERN_INFO "~~~~~~ Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n",
 		current->comm, current->pid, current->parent->comm, current->parent->pid);
 
    return 0; 
