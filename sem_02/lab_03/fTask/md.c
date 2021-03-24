@@ -11,15 +11,15 @@ static int __init md_init(void)
 { 
    printk(KERN_INFO "Module init:\n");
 
-   struct task_struct *task = &init_task;
+   struct task_struct *task = &init_task; // Инициализация списка декрипторов процессов
    do
    {
        printk(KERN_INFO "~~~~~~ Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n", 
             task->comm, task->pid, task->parent->comm, task->parent->pid);
-   } while ((task = next_task(task)) != &init_task);
+   } while ((task = next_task(task)) != &init_task); // Прохождения списка
 
    printk(KERN_INFO "~~~~~~ Proccess: %s (comm) - %d (ID), Parent: %s (comm) - %d (ID)\n",
-		current->comm, current->pid, current->parent->comm, current->parent->pid);
+		current->comm, current->pid, current->parent->comm, current->parent->pid); // получение информации о текущем процессе
 
    return 0; 
 }
