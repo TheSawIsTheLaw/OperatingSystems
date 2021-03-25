@@ -8,7 +8,7 @@ MODULE_AUTHOR("Yakuba D.");
 
 
 static int __init md_init(void) 
-{ 
+{
    printk(KERN_INFO "Module init:\n");
 
    struct task_struct *task = &init_task;
