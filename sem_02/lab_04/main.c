@@ -42,6 +42,7 @@ void printCMDLINE()
     int len = fread(buf, 1, BUFFSIZE, file);
     buf[len - 1] = 0;
 
+    printf("\nCMDLINE CONTENT:\n");
     printf("pid: %d\ncmdline:%s\n", getpid(), buf);
 
     fclose(file);
@@ -56,6 +57,7 @@ void printENVIRON()
 
     int len;
     char buf[BUFFSIZE];
+    printf("\nENVIRON CONTENT:\n");
     while ((len = fread(buf, 1, BUFFSIZE, file)) > 0)
     {
         for (int i = 0; i < len; i++)
@@ -74,7 +76,7 @@ void printFD()
     snprintf(pathToOpen, PATH_MAX, "/proc/%d/fd/", PID);
     DIR *dir = opendir(pathToOpen);
 
-    printf("\nFD RESULTS:\n");
+    printf("\nFD CONTENT:\n");
 
     struct dirent *readDir;
     char string[PATH_MAX];
@@ -102,7 +104,7 @@ void printSTAT()
     fread(buf, 1, BUFFSIZE, file);
     char *tokens = strtok(buf, " ");
 
-    printf("\n STAT RESULTS: \n");
+    printf("\nSTAT CONTENT: \n");
 
     for (int i = 1; tokens != NULL; i++)
     {
