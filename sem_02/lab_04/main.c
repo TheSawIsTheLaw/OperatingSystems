@@ -61,9 +61,9 @@ void printENVIRON()
     while ((len = fread(buf, 1, BUFFSIZE, file)) > 0)
     {
         for (int i = 0; i < len; i++)
-            if (buf[i] == 0)
-                buf[i] = 10;
-        buf[len - 1] = 10;
+            if (!buf[i])
+                buf[i] = '\n';
+        buf[len - 1] = '\n';
         printf("%s", buf);
     }
 
