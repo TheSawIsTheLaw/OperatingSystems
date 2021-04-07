@@ -43,7 +43,7 @@ void printCMDLINE()
     buf[len - 1] = 0;
 
     printf("\nCMDLINE CONTENT:\n");
-    printf("pid: %d\ncmdline:%s\n", PID, buf);
+    printf("cmdline:%s\n", buf);
 
     fclose(file);
 }
