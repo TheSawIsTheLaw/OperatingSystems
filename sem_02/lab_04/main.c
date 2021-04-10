@@ -263,38 +263,38 @@ void printROOT()
 
 int main()
 {
-        green();
-        printCMDLINE();
-        printf("\n");
+    green();
+    printCMDLINE();
+    printf("\n");
 
-        yellow();
-        printENVIRON();
-        printf("\n");
+    yellow();
+    printENVIRON();
+    printf("\n");
 
-        cyan();
-        printFD();
-        printf("\n");
+    cyan();
+    printFD();
+    printf("\n");
 
-        white();
-        printSTAT();
-        printSTATM();
-        printf("\n");
+    white();
+    printSTAT();
+    printSTATM();
+    printf("\n");
 
-        green();
-        printCWD();
-        printf("\n");
+    green();
+    printCWD();
+    printf("\n");
 
-        yellow();
-        printEXE();
-        printf("\n");
+    yellow();
+    printEXE();
+    printf("\n");
 
-        cyan();
-        printMAPS();
-        printf("\n");
+    cyan();
+    printMAPS();
+    printf("\n");
 
-        white();
-        printROOT();
-        printf("\n");
+    white();
+    printROOT();
+    printf("\n");
 
     reset();
 
