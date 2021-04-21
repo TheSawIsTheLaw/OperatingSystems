@@ -1,5 +1,5 @@
 ifneq ($(KERNELRELEASE),)
-	obj-m := fortune.o
+	obj-m := fortune.o seq.o
 else
 	CURRENT = $(shell uname -r)
 	KDIR = /lib/modules/$(CURRENT)/build

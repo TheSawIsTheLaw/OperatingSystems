@@ -62,7 +62,7 @@ ssize_t fortune_write(struct file *file, const char __user *buf, size_t len, lof
 	return len;
 }
 
-\\ cat /proc/fortune -> result
+// cat /proc/fortune -> result
 int fortune_open(struct inode *sp_inode, struct file *sp_file)
 {
     printk(KERN_INFO "=== fortune: called open\n");
