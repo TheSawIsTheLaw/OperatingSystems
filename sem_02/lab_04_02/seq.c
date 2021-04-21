@@ -1,66 +1,72 @@
+#include <asm/uaccess.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
-#include <asm/uaccess.h>
-static char kernel_buffer[256];
-#define TEXT_GERMAN  "Hallo Welt"
-#define TEXT_ENGLISH "Hello World"
-#define PROC_FILE_NAME  "seq"
-static struct proc_dir_entry *proc_file;
-static char *output_string;
 
-static int prochello_show( struct seq_file *m, void *v )
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Yakuba D.V.");
+
+#define TEXT_BOKMAL "Hei Verden!"
+#define TEXT_ENGLISH "Hello World"
+#define PROC_FILE_NAME "seq"
+
+#define KERNEL_BUF_SIZE 256
+
+static char kernelBuf[KERNEL_BUF_SIZE];
+static struct proc_dir_entry *procFile;
+static char *outString;
+
+static int procShow(struct seq_file *m, void *v)
 {
-    seq_printf( m, "%s\n", output_string);
+    seq_printf(m, "%s\n", outString);
     return 0;
 }
 
-static int prochello_open(struct inode *inode, struct file *file)
+static int procOpen(struct inode *inode, struct file *file)
 {
-    return single_open(file, prochello_show, NULL);
+    return single_open(file, procShow, NULL);
 }
 
-static ssize_t prochello_write( struct file *instanz, const char __user \
-  *buffer, size_t max_bytes_to_write, loff_t *offset )
+static ssize_t procWrite(struct file *instanz, const char __user *buffer, size_t length,
+                               loff_t *offset)
 {
-    ssize_t to_copy, not_copied;
-    to_copy = min( max_bytes_to_write, sizeof(kernel_buffer) );
-    not_copied = copy_from_user(kernel_buffer,buffer,to_copy);
-    if (not_copied==0) 
+    ssize_t toCopy, notCopied;
+    toCopy = min(length, sizeof(kernelBuf));
+    notCopied = copy_from_user(kernelBuf, buffer, toCopy);
+    if (!notCopied)
     {
-        printk("kernel_buffer: \"%s\"\n", kernel_buffer);
-    
-        if (strncmp("deutsch", kernel_buffer, 7)==0) {
-            output_string = TEXT_GERMAN;
-        }
-    
-        if (strncmp("english", kernel_buffer, 7)==0) {
-            output_string = TEXT_ENGLISH;
-        }
+        printk("kernelBuf: \"%s\"\n", kernelBuf);
+
+        if (strncmp("bokmal", kernelBuf, 6) == 0)
+            outString = TEXT_BOKMAL;
+        else
+            outString = TEXT_ENGLISH;
     }
-    return to_copy - not_copied;
+    return toCopy - notCopied;
 }
 
-static const struct proc_ops prochello_fops = {
-    proc_open: prochello_open,
-    proc_write: prochello_write,
-    proc_release: single_release,
-    proc_read: seq_read
+static const struct proc_ops procFOPS =
+{
+    proc_open : procOpen, 
+    proc_write : procWrite, 
+    proc_release : single_release, 
+    proc_read : seq_read
 };
 
-static int __init prochello_init(void)
+static int __init procInit(void)
 {
-    output_string = "Hello World";
-    proc_file= proc_create_data( PROC_FILE_NAME, S_IRUGO | S_IWUGO, NULL, &prochello_fops, NULL);
-    if (!proc_file)
+    outString = "No hello :(";
+    procFile = proc_create_data(PROC_FILE_NAME, S_IRUGO | S_IWUGO, NULL, &procFOPS, NULL);
+    if (!procFile)
         return -ENOMEM;
     return 0;
 }
-static void __exit prochello_exit(void)
+static void __exit procExit(void)
 {
-    if( proc_file )
-        remove_proc_entry( PROC_FILE_NAME, NULL );
+    if (procFile)
+        remove_proc_entry(PROC_FILE_NAME, NULL);
 }
-module_init( prochello_init );
-module_exit( prochello_exit );
-MODULE_LICENSE("GPL");
+
+
+module_init(procInit);
+module_exit(procExit);
