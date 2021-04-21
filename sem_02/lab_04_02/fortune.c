@@ -62,9 +62,26 @@ ssize_t fortune_write(struct file *file, const char __user *buf, size_t len, lof
 	return len;
 }
 
+\\ cat /proc/fortune -> result
+int fortune_open(struct inode *sp_inode, struct file *sp_file)
+{
+    printk(KERN_INFO "=== fortune: called open\n");
+
+    return 0;
+}
+
+int fortune_release(struct inode *sp_inode, struct file *sp_file)
+{
+    printk(KERN_INFO "=== fortune: called release\n");
+
+    return 0;
+}
+
 static struct proc_ops fops = {
 	proc_read:  fortune_read,
-	proc_write: fortune_write
+	proc_write: fortune_write,
+    proc_open: fortune_open,
+    proc_release: fortune_release
 };
 
 static void cleanup(void)
