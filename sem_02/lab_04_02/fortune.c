@@ -17,15 +17,15 @@ static struct proc_dir_entry *fortFile = NULL;
 static struct proc_dir_entry *fortSymlink = NULL;
 
 static char *fortunesArr; // Введённые фортунки
-static int writeIndex; // Индекс для добавления
-static int readIndex; // Индекс для чтения
+static int writeIndex;    // Индекс для добавления
+static int readIndex;     // Индекс для чтения
 
 static char copy[MAX_LEN];
 
 ssize_t fortRead(struct file *filep, char __user *buf, size_t count, loff_t *offp)
 {
     printk(KERN_INFO "--***-- FORT: called read\n");
-    
+
     if (*offp > 0 || !writeIndex)
         return 0;
 
@@ -83,12 +83,7 @@ int fortRelease(struct inode *spInode, struct file *spFile)
 }
 
 static struct proc_ops fops =
-{
-    proc_read : fortRead, 
-    proc_write : fortWrite, 
-    proc_open : fortOpen, 
-    proc_release : fortRelease
-};
+    {proc_read : fortRead, proc_write : fortWrite, proc_open : fortOpen, proc_release : fortRelease};
 
 static void cleanup(void)
 {
@@ -135,5 +130,4 @@ static void __exit fortExit(void)
     printk(KERN_INFO "--***-- FORT: module unloaded\n");
 }
 
-module_init(fortInit) 
-module_exit(fortExit)
+module_init(fortInit) module_exit(fortExit)
