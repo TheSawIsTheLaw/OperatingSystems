@@ -2,29 +2,16 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define OK 0
-#define FILE_NAME "data/out.txt"
-#define SPEC "%c"
-
 int main()
 {
-    FILE *f1 = fopen(FILE_NAME, "w");
-    FILE *f2 = fopen(FILE_NAME, "w");
+    FILE *f1 = fopen("out.txt", "w");
+    FILE *f2 = fopen("out.txt", "w");
 
-    for (char c = 'a'; c <= 'z'; c++)
-    {
-        if (c % 2)
-        {
-            fprintf(f1, SPEC, c);
-        }
-        else
-        {
-            fprintf(f2, SPEC, c);
-        }
-    }
+    for (char curLetter = 'a'; curLetter < '{'; curLetter++)
+        curLetter % 2 ? fprintf(f1, "%c", curLetter) : fprintf(f2, "%c", curLetter);
 
     fclose(f2);
     fclose(f1);
 
-    return OK;
+    return 0;
 }
