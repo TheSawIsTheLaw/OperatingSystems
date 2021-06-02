@@ -1,69 +1,63 @@
- 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <signal.h>
-#include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#define SOCKET_NAME "sock.s"
-#define BUF_SIZE 256
-#define OK 0
+#define NAME "sock.s"
 
+static int sockDescr;
 
-static int sockfd;
-
-void cleanup_socket(void)
+void makeCleanup()
 {
-    close(sockfd);
-    unlink(SOCKET_NAME);
+    close(sockDescr);
+    unlink(NAME);
 }
 
-void sigint_handler(int signum)
+void handler(int signum)
 {
-    cleanup_socket();
-    exit(OK);
+    makeCleanup();
+    exit(0);
 }
 
 int main(int argc, char **argv)
 {
-    if ((sockfd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
+    if ((sockDescr = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
     {
-        perror("Failed to create socket");
-        return EXIT_FAILURE;
+        perror("Cannot create socket");
+        return 1;
     }
 
-    struct sockaddr srvr_name;
-    srvr_name.sa_family = AF_UNIX;
-    strcpy(srvr_name.sa_data, SOCKET_NAME);
-    if (bind(sockfd, &srvr_name, strlen(srvr_name.sa_data) + sizeof(srvr_name.sa_family)) < 0)
+    struct sockaddr serverName;
+    serverName.sa_family = AF_UNIX;
+    strcpy(serverName.sa_data, NAME);
+    if (bind(sockDescr, &serverName, strlen(serverName.sa_data) + sizeof(serverName.sa_family)) < 0)
     {
-        perror("Failed to bind socket");
-        return EXIT_FAILURE;
+        perror("Cannot bind socket");
+        return 1;
     }
 
-    signal(SIGINT, sigint_handler);
-    fprintf(stdout, "Server is listening.\nTo stop server press Ctrl + C.\n");
+    signal(SIGINT, handler);
+    fprintf(stdout, "Server is ready to go.\n(Ctrl + C = stop)\n");
 
-    char buf[BUF_SIZE];
+    char gotMessage[64];
     for (;;)
     {
-        int bytes = recv(sockfd, buf, sizeof(buf), 0);
-        if (bytes <= 0)
+        int numOfSymbols = recv(sockDescr, gotMessage, sizeof(gotMessage), 0);
+        if (numOfSymbols <= 0)
         {
-            perror("Failed to recv");
-            cleanup_socket();
-            return EXIT_FAILURE;
+            perror("Recv failure");
+            makeCleanup();
+            return 1;
         }
-
-        buf[bytes] = '\0';
-        fprintf(stdout, "Server read message: %s\n", buf);
+        gotMessage[numOfSymbols] = '\0';
+        
+        fprintf(stdout, "Server catched: %s\n", gotMessage);
     }
 
-    fprintf(stdout, "Server stopped listening\n");
-    cleanup_socket();
-    fprintf(stdout, "Socket closed\n");
-
-    return OK;
+    fprintf(stdout, "Server stops\n");
+    makeCleanup();
+    return 0;
 }

@@ -1,41 +1,44 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-#define SOCKET_NAME "sock.s"
-#define BUF_SIZE 256
-#define OK 0
-#define ANSI_COLOR_RESET   "\x1b[0m"
+#define NAME "sock.s"
+#define ANSI_COLOR_RESET "\x1b[0m"
 
 int main(int argc, char **argv)
-{   
-    int sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (sockfd < 0)
+{
+    char colors[5][9] = {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[35m", "\x1b[33m"};
+
+    int sockDescr;
+    if ((sockDescr = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
     {
-        perror("Failed to create socket");
-        return EXIT_FAILURE;
+        perror("Cannot create socket");
+        return 1;
     }
 
-    struct sockaddr srvr_name;
-    srvr_name.sa_family = AF_UNIX;
-    strcpy(srvr_name.sa_data, SOCKET_NAME);
+    struct sockaddr serverName;
+    serverName.sa_family = AF_UNIX;
+    strcpy(serverName.sa_data, NAME);
 
     char *color = colors[atoi(argv[1])];
+    char buf[64];
     for (;;)
     {
-        char buf[BUF_SIZE];
-        snprintf(buf, BUF_SIZE, "%sMy pid is: %d"ANSI_COLOR_RESET, color, getpid());
-        if (sendto(sockfd, buf, strlen(buf), 0, &srvr_name, strlen(srvr_name.sa_data) + sizeof(srvr_name.sa_family)) < 0)
+        snprintf(buf, 64, "%sHenlo!! Check it, my id is: %d" ANSI_COLOR_RESET, color, getpid());
+        
+        if (sendto(sockDescr, buf, strlen(buf), 0, &serverName,
+                   strlen(serverName.sa_data) + sizeof(serverName.sa_family)) < 0)
         {
             perror("Failed to send message");
-            close(sockfd);
-            return EXIT_FAILURE;
+            close(sockDescr);
+            return 1;
         }
+
         sleep(1);
     }
 
-    return OK;
+    return 0;
 }

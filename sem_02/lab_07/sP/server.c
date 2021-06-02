@@ -1,142 +1,124 @@
+#include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <errno.h>
-#include <signal.h>
 #include <time.h>
+#include <unistd.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#define BUF_SIZE 256
 #define SOCKET_ADDR "localhost"
-#define SOCKET_PORT 9999
+#define SOCKET_PORT 6666
 
-#define OK 0
+#define MAX_CLIENTS_COUNT 6
 
-#define MAX_CLIENTS_COUNT 10
-
-static int master_sd;
+static int sockDescr;
 static int clients[MAX_CLIENTS_COUNT];
 
 int cleanup()
 {
-	close(master_sd);
-	exit(EXIT_FAILURE);
+    close(sockDescr);
+    exit(0);
 }
 
-void sigint_handler(int signum)
+void handler(int signum)
 {
     cleanup();
-    exit(OK);
+    exit(0);
 }
 
-void handle_connection(void)
+void connectionHandler(void)
 {
-	const int sd = accept(master_sd, NULL, NULL);
-	if (sd == -1) {
-		cleanup();
-	}
+    int socketDescr = accept(sockDescr, NULL, NULL);
+    if (socketDescr == -1)
+        cleanup();
 
-	for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
+    for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
     {
-		if (!clients[i])
+        if (!clients[i])
         {
-			clients[i] = sd;
-			fprintf(stdout, "%sNew connection.%s \n", "\e[4;32m", "\x1b[0m");
-			return;
-		}
-	}
+            clients[i] = socketDescr;
+            fprintf(stdout, "%s///Got new connection! We are so popular....///%s \n", "\e[4;32m", "\x1b[0m");
+            return;
+        }
+    }
 
-	fprintf(stderr, "Reached MAX_CLIENTS_COUNT (%d)\n", MAX_CLIENTS_COUNT);
+    perror("Max clients count is reached :( Shutdown...\n");
     cleanup();
 }
 
-void handle_client(int i)
+void clientHandler(int i)
 {
-	char msg[BUF_SIZE];
-	const ssize_t bytes = recv(clients[i], &msg, BUF_SIZE, 0);
+    char message[64];
+    const ssize_t gotSymbols = recv(clients[i], &message, 64, 0);
 
-	if (!bytes)
+    if (!gotSymbols)
     {
-		close(clients[i]);
-		clients[i] = 0;
-		return;
-	}
+        close(clients[i]);
+        clients[i] = 0;
+        return;
+    }
 
-	msg[bytes] = '\0';
-    fprintf(stdout, "Get message from client: %s\n", msg);
+    message[gotSymbols] = '\0';
+    fprintf(stdout, "Message was catched: %s\n", message);
 }
 
 int main(void)
 {
-	if ((master_sd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if ((sockDescr = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-		perror("Failed to create socket");
-		return EXIT_FAILURE;
-	}
+        perror("Cannot create socket");
+        return 1;
+    }
 
-	struct sockaddr_in addr = {
-		.sin_family = AF_INET,
-		.sin_addr.s_addr = INADDR_ANY,
-		.sin_port = htons(SOCKET_PORT)
-	};
+    struct sockaddr_in socketAddress;
+    socketAddress.sin_family = AF_INET;
+    socketAddress.sin_addr.s_addr = INADDR_ANY;
+    socketAddress.sin_port = htons(SOCKET_PORT);
 
-	if (bind(master_sd, (struct sockaddr *) &addr, sizeof addr) < 0)
+    if (bind(sockDescr, (struct sockaddr *)&socketAddress, sizeof socketAddress) < 0)
+        cleanup();
+
+    if (listen(sockDescr, MAX_CLIENTS_COUNT) < 0)
+        cleanup();
+
+    signal(SIGINT, handler);
+    fprintf(stdout, "Server is ready to go!\n(Ctrl + C = stop)\n");
+
+    for(;;)
     {
-		cleanup();
-	}
+        fd_set set;
+        FD_ZERO(&set);
+        FD_SET(sockDescr, &set);
 
-	if (listen(master_sd, MAX_CLIENTS_COUNT) < 0)
-    {
-		cleanup();
-	}
+        int maxSockDescr = sockDescr;
 
-    signal(SIGINT, sigint_handler);
-    fprintf(stdout, "Server is listening.\nTo stop server press Ctrl + C.\n");
-
-	while (1) {
-		fd_set readfds;
-		FD_ZERO(&readfds);
-		FD_SET(master_sd, &readfds);
-
-		int max_sd = master_sd;
-
-		for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
+        for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
         {
-			if (clients[i] > 0)
-            {
-				FD_SET(clients[i], &readfds);
-			}
+            if (clients[i] > 0)
+                FD_SET(clients[i], &set);
 
-			if (clients[i] > max_sd)
-            {
-				max_sd = clients[i];
-			}
-		}
+            if (clients[i] > maxSockDescr)
+                maxSockDescr = clients[i];
+        }
 
-		if (pselect(max_sd + 1, &readfds, NULL, NULL, NULL, NULL) < 0)
+        if (pselect(maxSockDescr + 1, &set, NULL, NULL, NULL, NULL) < 0)
         {
-			cleanup();
-            perror("Failed to select");
-		}
+            cleanup();
+            perror("Select failure");
+        }
 
-		if (FD_ISSET(master_sd, &readfds))
-        {
-			handle_connection();
-		}
+        if (FD_ISSET(sockDescr, &set))
+            connectionHandler();
 
-		for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
-        {
-			if (clients[i] && FD_ISSET(clients[i], &readfds))
-            {
-				handle_client(i);
-			}
-		}
-	}
+        for (int i = 0; i < MAX_CLIENTS_COUNT; ++i)
+            if (clients[i] && FD_ISSET(clients[i], &set))
+                clientHandler(i);
+    }
 }
