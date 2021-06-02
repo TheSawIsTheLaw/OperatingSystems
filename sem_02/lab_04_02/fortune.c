@@ -22,6 +22,7 @@ static int readIndex;     // Индекс для чтения
 
 static char copy[MAX_LEN];
 
+// По мере записи - они последовательно считываются
 ssize_t fortRead(struct file *filep, char __user *buf, size_t count, loff_t *offp)
 {
     printk(KERN_INFO "--***-- FORT: called read\n");
@@ -112,7 +113,7 @@ static int __init fortInit(void)
 
     if (!(fortDir = proc_mkdir(FORTUNE_DIRNAME, NULL)))
         return noMemoryErrorExit("proc_mkdir");
-    if (!(fortFile = proc_create(FORTUNE_FILENAME, 0666, fortDir, &fops))) // 666 - !!!!!!!!!!!
+    if (!(fortFile = proc_create(FORTUNE_FILENAME, 0666, fortDir, &fops)))
         return noMemoryErrorExit("proc_create");
     if (!(fortSymlink = proc_symlink(FORTUNE_SYMLINK, NULL, FORTUNE_FILEPATH)))
         return noMemoryErrorExit("proc_symlink");
