@@ -6,27 +6,53 @@
 #include<linux/time.h>
 
 #define MYFS_MAGIC_NUMBER 0xFEE1DEAD
+#define SLAB_NAME "threehudredbucks"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakuba D.");
 
+struct myFSInode
+{
+    int i_mode;
+    unsigned long i_ino;
+};
+
+static int cacheCounter = 0;
+static int cacheSize = 64;
+static struct kmem_cache *cache = NULL;
+static struct myFSInode **inodes = NULL;
+
+static struct myFSInode *getCacheInode(void)
+{
+    if (cacheCounter == cacheSize)
+        return NULL;
+
+    inodes[cacheCounter] = kmem_cache_alloc(cache, GFP_KERNEL);
+
+    return inodes[cacheCounter++];
+}
 
 
 static struct inode *myFSMakeInode(struct super_block *sb, int mode)
 {
     struct inode *ret = new_inode(sb);
-    struct myFSInode
-    {
-    int i_mode;
-    unsigned long i_ino;
-    }myFSInode;
+    struct myFSInode *inode = NULL;
 
     if (ret)
     {
         inode_init_owner(ret, NULL, mode);
         ret->i_size = PAGE_SIZE;
         ret->i_atime = ret->i_mtime = ret->i_ctime = current_time(ret);
-        ret->i_private = &myFSInode;
+        
+        inode = getCacheInode();
+
+        if (inode != NULL)
+        {
+            inode->i_mode = ret->i_mode;
+            inode->i_ino = ret->i_ino;
+        }
+
+        ret->i_private = inode;
     }
 
     return ret;
@@ -88,7 +114,7 @@ static struct file_system_type myFSType = {
     .owner = THIS_MODULE,
     .name = "myFS",
     .mount = myFSMount,
-    .kill_sb = kill_block_super,
+    .kill_sb = kill_anon_super,
 };
 
 static int __init myFSInit(void)
@@ -99,12 +125,37 @@ static int __init myFSInit(void)
         printk(KERN_ERR ">>>CANNOT REGISTER OWN FILESYSTEM!\n");
         return ret;
     }
+
+    inodes = kmalloc(sizeof(struct myFSInode *) * cacheSize, GFP_KERNEL);
+    if (inodes == NULL)
+    {
+        printk(KERN_ERR ">>>kmalloc for inodes error!");
+        return -ENOMEM;
+    }
+
+    cache = kmem_cache_create(SLAB_NAME, sizeof(struct myFSInode), 0, 0, NULL);
+    if (cache == NULL)
+    {
+        kfree(inodes);
+        printk(KERN_ERR ">>>kmem_cache_create problem!");
+        return -ENOMEM;
+    }
+
     printk(KERN_DEBUG ">>>SUCCESS, YOUR FILESYSTEM IS READY TO GO!\n");
     return 0;
 }
 
 static void __exit myFSExit(void)
 {
+    int i = 0;
+    while (i < cacheCounter)
+    {
+        kmem_cache_free(cache, inodes[i]);
+        i++;
+    }
+    kmem_cache_destroy(cache);
+    kfree(inodes);
+
     int ret = unregister_filesystem(&myFSType);
     if (ret != 0)
         printk(KERN_ERR ">>>CANNOT UNREGISTER FILESYSTEM!\n");
