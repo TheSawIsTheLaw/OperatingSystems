@@ -105,7 +105,7 @@ static struct dentry *myFSMount(struct file_system_type *type, int flags, char c
     if (IS_ERR(entry))
         printk(KERN_ERR ">>>Mounting failed!");
     else
-        printk(KERN_DEBUG ">>>FS was successfully mounted.");
+        printk(KERN_INFO ">>>FS was successfully mounted.");
     return entry;
 }
 
@@ -165,3 +165,5 @@ static void __exit myFSExit(void)
 
 module_init(myFSInit);
 module_exit(myFSExit);
+
+// sudo mount -o loop -t myfs ./image ./dir
