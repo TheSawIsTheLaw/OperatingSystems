@@ -1,57 +1,93 @@
+#include <asm/io.h>
+#include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/interrupt.h>
-#include <asm/io.h>
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakuba D.");
 
 #define IRQ 1
-static int dev_id;
+static int devID;
 
-char my_tasklet_data[] = "KEYBOARD INTERRUPT";
+char yakubaTaskletData[] = "Key was clicked";
 
-void my_tasklet_function(unsigned long data)
+void yakubaTaskletInnerFunction(unsigned long data)
 {
-	int scancode = inb(0x60);
-	if (scancode < 103) {
-		printk(KERN_INFO "my_tasklet: %s: scancode: %d\n", (char *)data, scancode);
-	}
+    printk(KERN_INFO "<<<yakubaTasklet: %s\n", (char *)data);
 }
 
-struct tasklet_struct my_tasklet =
-{
+/* 
+ * count - Счётчик ссылок. если не равен нулю, то тасклет запрещён и не может выполняться
+ */
+struct tasklet_struct yakubaTasklet = {
     .count = ATOMIC_INIT(0),
-    .func = my_tasklet_function,
-    .data = (unsigned long) &my_tasklet_data,
+    .func = yakubaTaskletInnerFunction,
+    .data = (unsigned long)&yakubaTaskletData,
 };
 
-irqreturn_t my_irq_handler(int irq, void *dev)
+irqreturn_t yakubaHandler(int irq, void *dev)
 {
-	if (irq == IRQ) {
-		tasklet_schedule(&my_tasklet);
-		return IRQ_HANDLED;
-	}
-	return IRQ_NONE;
+    printk(KERN_INFO "yakubaTasklet: scheduling...\n");
+    if (irq == IRQ)
+    {
+        tasklet_schedule(&yakubaTasklet);
+        return IRQ_HANDLED;
+    }
+    return IRQ_NONE;
 }
 
-static int __init my_tasklet_init(void)
+static struct proc_dir_entry *file = NULL;
+
+// state - TASKLET_STATE_SCHED (тасклет запланирован к выполнению), TASKLET_STATE_RUN (тасклет выполняется)
+int procShow(struct seq_file *filep, void *v)
 {
-	int ret = request_irq(IRQ, my_irq_handler, IRQF_SHARED, "my_irq_handler", &dev_id);
-	if (ret) {
-		printk(KERN_ERR "my_tasklet: my_irq_handler wasn't register\n");
-	} else {
-		printk(KERN_INFO "my_tasklet: module loaded\n");
-	}
-	return ret;
+    printk(KERN_INFO "<<<yakubaTasklet: called show\n");
+    seq_printf(filep, "State: %ld, Count: %ld, Use_callback: %d, Data: %s", yakubaTasklet.state, yakubaTasklet.count,
+               yakubaTasklet.use_callback, (char *)yakubaTasklet.data);
+    return 0;
 }
 
-static void __exit my_tasklet_exit(void)
+int procOpen(struct inode *inode, struct file *fileInner)
 {
-	tasklet_kill(&my_tasklet);
-	free_irq(IRQ, &dev_id);
-	printk(KERN_DEBUG "my_tasklet: module unloaded\n");
+    printk(KERN_INFO "<<<yakubaTasklet: called open\n");
+    return single_open(fileInner, procShow, NULL);
 }
 
-module_init(my_tasklet_init)
-module_exit(my_tasklet_exit)
+int procRelease(struct inode *inode, struct file *fileInner)
+{
+    printk(KERN_INFO "<<<yakubaTasklet: called release\n");
+    return single_release(inode, fileInner);
+}
+
+static struct proc_ops fops = {proc_read : seq_read, proc_open : procOpen, proc_release : procRelease};
+
+static int __init yakubaTaskletInit(void)
+{
+    if (!proc_create("tasklet", 0666, file, &fops))
+    {
+        printk(KERN_INFO "Cannot proc_create!\n");
+        return -1;
+    }
+
+    int ret = request_irq(IRQ, yakubaHandler, IRQF_SHARED, "yakubaHandler", &devID);
+    if (ret)
+    {
+        printk(KERN_ERR "yakubaTasklet: cannot register yakubaHandler\n");
+    }
+    else
+    {
+        printk(KERN_INFO "yakubaTasklet: module loaded\n");
+    }
+    return ret;
+}
+
+static void __exit yakubaTasklet_exit(void)
+{
+    tasklet_kill(&yakubaTasklet);
+    free_irq(IRQ, &devID);
+    printk(KERN_DEBUG "yakubaTasklet: module unloaded\n");
+}
+
+module_init(yakubaTaskletInit) module_exit(yakubaTasklet_exit)
