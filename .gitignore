@@ -6,6 +6,10 @@
 
 *.vs*
 
+*.mod
+*.ko
+*.sym*
+
 *flags
 *.config
 *.creator*
