@@ -5,13 +5,13 @@
 #include<linux/fs.h>
 #include<linux/time.h>
 
-#define MYFS_MAGIC_NUMBER 0xFEE1DEAD
+#define FS_MAGIC_NUMBER 0xFEE1DEAD
 #define SLAB_NAME "threehudredbucks"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakuba D.");
 
-struct myFSInode
+struct yakubaFSInode
 {
     int i_mode;
     unsigned long i_ino;
@@ -20,9 +20,9 @@ struct myFSInode
 static int cacheCounter = 0;
 static int cacheSize = 64;
 static struct kmem_cache *cache = NULL;
-static struct myFSInode **inodes = NULL;
+static struct yakubaFSInode **inodes = NULL;
 
-static struct myFSInode *getCacheInode(void)
+static struct yakubaFSInode *getCacheInode(void)
 {
     if (cacheCounter == cacheSize)
         return NULL;
@@ -33,16 +33,19 @@ static struct myFSInode *getCacheInode(void)
 }
 
 
-static struct inode *myFSMakeInode(struct super_block *sb, int mode)
+static struct inode *yakubaFSMakeInode(struct super_block *sb, int mode)
 {
-    struct inode *ret = new_inode(sb);
-    struct myFSInode *inode = NULL;
+    struct inode *ret = new_inode(sb); // Allocates a new inode for given superblock
+    struct yakubaFSInode *inode = NULL;
 
     if (ret)
     {
-        inode_init_owner(ret, NULL, mode);
+        inode_init_owner(ret, NULL, mode); // init uid, gid, mode for new inode
         ret->i_size = PAGE_SIZE;
         ret->i_atime = ret->i_mtime = ret->i_ctime = current_time(ret);
+        // ctime - inode change time (attributes)
+        // mtime - file modification time
+        // atime - access time
         
         inode = getCacheInode();
 
@@ -58,30 +61,30 @@ static struct inode *myFSMakeInode(struct super_block *sb, int mode)
     return ret;
 }
 
-static void myFSPutSuper(struct super_block *sb)
+static void yakubaFSPutSuper(struct super_block *sb)
 {
-    printk(KERN_DEBUG ">>>Superblock is destroyed!");
+    printk(KERN_DEBUG ">>>Superblock is destroyed!\n");
 }
 
-static struct super_operations const myFSSuperOps = {
-    .put_super = myFSPutSuper,
+static struct super_operations const yakubaFSSuperOps = {
+    .put_super = yakubaFSPutSuper, // Деструктор суперблока
     .statfs = simple_statfs,
     .drop_inode = generic_delete_inode,
 };
 
-static int myFSFillSB(struct super_block *sb, void *data, int silent)
+static int yakubaFSFillSB(struct super_block *sb, void *data, int silent)
 {
     struct inode *root = NULL;
 
-    sb->s_blocksize = PAGE_SIZE;
-    sb->s_blocksize_bits = PAGE_SHIFT;
-    sb->s_magic = MYFS_MAGIC_NUMBER;
-    sb->s_op = &myFSSuperOps;
+    sb->s_blocksize = PAGE_SIZE; // Так как у нас виртуальная файловая система и минимально выделяемый объём памяти - страница
+    sb->s_blocksize_bits = PAGE_SHIFT; // Количество битов для сдвига для получения номера соответствующей страницы
+    sb->s_magic = FS_MAGIC_NUMBER;
+    sb->s_op = &yakubaFSSuperOps;
 
-    root = myFSMakeInode(sb, S_IFDIR | 0755); // S_IFDIR - маска, говорящая о том, что создаём каталог
+    root = yakubaFSMakeInode(sb, S_IFDIR | 0755); // S_IFDIR - маска, говорящая о том, что создаём каталог
     if (!root)
     {
-        printk(KERN_ERR ">>>Inode allocation error");
+        printk(KERN_ERR ">>>Inode allocation error\n");
         return -ENOMEM;
     }
     root->i_op = &simple_dir_inode_operations;
@@ -90,7 +93,7 @@ static int myFSFillSB(struct super_block *sb, void *data, int silent)
 
     if (!sb->s_root)
     {
-        printk(KERN_ERR ">>>Root creation failed!");
+        printk(KERN_ERR ">>>Root creation failed!\n");
         iput(root);
         
         return -ENOMEM;
@@ -99,45 +102,46 @@ static int myFSFillSB(struct super_block *sb, void *data, int silent)
     return 0;
 }
 
-static struct dentry *myFSMount(struct file_system_type *type, int flags, char const *dev, void *data)
+static struct dentry *yakubaFSMount(struct file_system_type *type, int flags, char const *dev, void *data)
 {
-    struct dentry *const entry = mount_nodev(type, flags, data, myFSFillSB);
+    struct dentry *const entry = mount_nodev(type, flags, data, yakubaFSFillSB);
     if (IS_ERR(entry))
-        printk(KERN_ERR ">>>Mounting failed!");
+        printk(KERN_ERR ">>>Mounting failed!\n");
     else
-        printk(KERN_INFO ">>>FS was successfully mounted.");
+        printk(KERN_DEBUG ">>>FS was successfully mounted.\n");
+    
     return entry;
 }
 
 
-static struct file_system_type myFSType = {
+static struct file_system_type yakubaFSType = {
     .owner = THIS_MODULE,
-    .name = "myFS",
-    .mount = myFSMount,
-    .kill_sb = kill_anon_super,
+    .name = "yakubaFS",
+    .mount = yakubaFSMount,
+    .kill_sb = kill_litter_super,
 };
 
-static int __init myFSInit(void)
+static int __init yakubaFSInit(void)
 {
-    int ret = register_filesystem(&myFSType);
+    int ret = register_filesystem(&yakubaFSType);
     if (ret != 0)
     {
         printk(KERN_ERR ">>>CANNOT REGISTER OWN FILESYSTEM!\n");
         return ret;
     }
 
-    inodes = kmalloc(sizeof(struct myFSInode *) * cacheSize, GFP_KERNEL);
+    inodes = kmalloc(sizeof(struct yakubaFSInode *) * cacheSize, GFP_KERNEL);
     if (inodes == NULL)
     {
-        printk(KERN_ERR ">>>kmalloc for inodes error!");
+        printk(KERN_ERR ">>>kmalloc for inodes error!\n");
         return -ENOMEM;
     }
 
-    cache = kmem_cache_create(SLAB_NAME, sizeof(struct myFSInode), 0, 0, NULL);
+    cache = kmem_cache_create(SLAB_NAME, sizeof(struct yakubaFSInode), 0, 0, NULL);
     if (cache == NULL)
     {
         kfree(inodes);
-        printk(KERN_ERR ">>>kmem_cache_create problem!");
+        printk(KERN_ERR ">>>kmem_cache_create problem!\n");
         return -ENOMEM;
     }
 
@@ -145,7 +149,7 @@ static int __init myFSInit(void)
     return 0;
 }
 
-static void __exit myFSExit(void)
+static void __exit yakubaFSExit(void)
 {
     int i = 0;
     while (i < cacheCounter)
@@ -156,14 +160,14 @@ static void __exit myFSExit(void)
     kmem_cache_destroy(cache);
     kfree(inodes);
 
-    int ret = unregister_filesystem(&myFSType);
+    int ret = unregister_filesystem(&yakubaFSType);
     if (ret != 0)
         printk(KERN_ERR ">>>CANNOT UNREGISTER FILESYSTEM!\n");
 
     printk(KERN_DEBUG ">>>MODULE FS UNLOADED!\n");
 }
 
-module_init(myFSInit);
-module_exit(myFSExit);
+module_init(yakubaFSInit);
+module_exit(yakubaFSExit);
 
-// sudo mount -o loop -t myfs ./image ./dir
+// sudo mount -o loop -t yakubaFS ./image ./dir

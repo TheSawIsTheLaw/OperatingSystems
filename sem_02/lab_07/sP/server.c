@@ -16,7 +16,7 @@
 #define SOCKET_ADDR "localhost"
 #define SOCKET_PORT 6666
 
-#define MAX_CLIENTS_COUNT 6
+#define MAX_CLIENTS_COUNT 10
 
 static int sockDescr;
 static int clients[MAX_CLIENTS_COUNT];
@@ -50,7 +50,7 @@ void connectionHandler(void)
     }
 
     perror("Max clients count is reached :( Shutdown...\n");
-    cleanup();
+    close(socketDescr);
 }
 
 void clientHandler(int i)

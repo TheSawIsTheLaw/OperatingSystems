@@ -30,10 +30,10 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    struct sockaddr serverName;
-    serverName.sa_family = AF_UNIX;
-    strcpy(serverName.sa_data, NAME);
-    if (bind(sockDescr, &serverName, strlen(serverName.sa_data) + sizeof(serverName.sa_family)) < 0)
+    struct sockaddr addr;
+    addr.sa_family = AF_UNIX;
+    strcpy(addr.sa_data, NAME);
+    if (bind(sockDescr, &addr, strlen(addr.sa_data) + sizeof(addr.sa_family)) < 0)
     {
         perror("Cannot bind socket");
         return 1;
@@ -56,8 +56,6 @@ int main(int argc, char **argv)
         
         fprintf(stdout, "Server catched: %s\n", gotMessage);
     }
-
-    fprintf(stdout, "Server stops\n");
-    makeCleanup();
+    
     return 0;
 }

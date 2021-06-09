@@ -19,9 +19,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    struct sockaddr serverName;
-    serverName.sa_family = AF_UNIX;
-    strcpy(serverName.sa_data, NAME);
+    struct sockaddr socketAddress;
+    socketAddress.sa_family = AF_UNIX;
+    strcpy(socketAddress.sa_data, NAME);
 
     char *color = colors[atoi(argv[1])];
     char buf[64];
@@ -29,8 +29,8 @@ int main(int argc, char **argv)
     {
         snprintf(buf, 64, "%sHenlo!! Check it, my id is: %d" ANSI_COLOR_RESET, color, getpid());
         
-        if (sendto(sockDescr, buf, strlen(buf), 0, &serverName,
-                   strlen(serverName.sa_data) + sizeof(serverName.sa_family)) < 0)
+        if (sendto(sockDescr, buf, strlen(buf), 0, &socketAddress,
+                   strlen(socketAddress.sa_data) + sizeof(socketAddress.sa_family)) < 0)
         {
             perror("Failed to send message");
             close(sockDescr);
