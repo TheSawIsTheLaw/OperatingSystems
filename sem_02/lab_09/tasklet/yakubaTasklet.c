@@ -4,6 +4,7 @@
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include <linux/slab.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakuba D.");
@@ -11,7 +12,7 @@ MODULE_AUTHOR("Yakuba D.");
 #define IRQ 1
 static int devID;
 
-char yakubaTaskletData[] = "Key was clicked";
+char *yakubaTaskletData = "Key was clicked";
 
 void yakubaTaskletInnerFunction(unsigned long data)
 {
@@ -21,18 +22,14 @@ void yakubaTaskletInnerFunction(unsigned long data)
 /* 
  * count - Счётчик ссылок. если не равен нулю, то тасклет запрещён и не может выполняться
  */
-struct tasklet_struct yakubaTasklet = {
-    .count = ATOMIC_INIT(0),
-    .func = yakubaTaskletInnerFunction,
-    .data = (unsigned long)&yakubaTaskletData,
-};
+struct tasklet_struct *yakubaTasklet;
 
 irqreturn_t yakubaHandler(int irq, void *dev)
 {
     printk(KERN_INFO "yakubaTasklet: scheduling...\n");
     if (irq == IRQ)
     {
-        tasklet_schedule(&yakubaTasklet);
+        tasklet_schedule(yakubaTasklet);
         return IRQ_HANDLED;
     }
     return IRQ_NONE;
@@ -44,8 +41,8 @@ static struct proc_dir_entry *file = NULL;
 int procShow(struct seq_file *filep, void *v)
 {
     printk(KERN_INFO "<<<yakubaTasklet: called show\n");
-    seq_printf(filep, "State: %ld, Count: %ld, Use_callback: %d, Data: %s", yakubaTasklet.state, yakubaTasklet.count,
-               yakubaTasklet.use_callback, (char *)yakubaTasklet.data);
+    seq_printf(filep, "State: %ld, Count: %ld, Use_callback: %d, Data: %s", yakubaTasklet->state, yakubaTasklet->count,
+               yakubaTasklet->use_callback, (char *)yakubaTasklet->data);
     return 0;
 }
 
@@ -71,6 +68,14 @@ static int __init yakubaTaskletInit(void)
         return -1;
     }
 
+    yakubaTasklet = kmalloc(sizeof(struct tasklet_struct), GFP_KERNEL);
+    if (!yakubaTasklet)
+    {
+        printk(KERN_INFO "kmalloc error!");
+        return -1;
+    }
+    tasklet_init(yakubaTasklet, yakubaTaskletInnerFunction, (unsigned long)yakubaTaskletData);
+
     int ret = request_irq(IRQ, yakubaHandler, IRQF_SHARED, "yakubaHandler", &devID);
     if (ret)
     {
@@ -85,9 +90,13 @@ static int __init yakubaTaskletInit(void)
 
 static void __exit yakubaTasklet_exit(void)
 {
-    tasklet_kill(&yakubaTasklet);
+    tasklet_kill(yakubaTasklet);
+    kfree(yakubaTasklet);
     free_irq(IRQ, &devID);
+    if (file)
+        remove_proc_entry("tasklet", NULL);
     printk(KERN_DEBUG "yakubaTasklet: module unloaded\n");
 }
 
-module_init(yakubaTaskletInit) module_exit(yakubaTasklet_exit)
+module_init(yakubaTaskletInit) 
+module_exit(yakubaTasklet_exit)
