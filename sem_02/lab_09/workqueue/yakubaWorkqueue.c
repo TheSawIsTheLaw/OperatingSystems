@@ -1,10 +1,10 @@
-#include <asm/io.h>
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 #include <linux/workqueue.h>
+#include <linux/delay.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Yakuba D.");
@@ -16,7 +16,8 @@ struct workqueue_struct *workQueue;
 
 void queueFunctionF(struct work_struct *work)
 {
-    printk(KERN_INFO "<<<yakubaQueue: Key was clicked (1 worker)\n");
+    printk(KERN_INFO "<<<yakubaQueue: Key was clicked (1 worker) and we sleep\n");
+    msleep(10);
 }
 
 void queueFunctionS(struct work_struct *work)
@@ -101,4 +102,5 @@ static void __exit workQueueExit(void)
     printk(KERN_INFO "<<<yakubaQueue: module unloaded\n");
 }
 
-module_init(workQueueInit) module_exit(workQueueExit)
+module_init(workQueueInit) 
+module_exit(workQueueExit)
